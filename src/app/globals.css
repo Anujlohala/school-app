@@ -113,3 +113,23 @@
     @apply focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none;
   }
 }
+
+.dashboard-progress {
+  appearance: none;
+  overflow: hidden;
+  border: none;
+  border-radius: 999px;
+  background: var(--secondary);
+  color: var(--primary);
+}
+.dashboard-progress::-webkit-progress-bar {
+  background: var(--secondary);
+}
+.dashboard-progress::-webkit-progress-value {
+  background: var(--primary);
+  border-radius: 999px;
+}
+.dashboard-progress::-moz-progress-bar {
+  background: var(--primary);
+  border-radius: 999px;
+}

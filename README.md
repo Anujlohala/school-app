@@ -2,7 +2,7 @@
 
 A private, responsive Dhukuti and shared-savings tracker for 11 school friends in Nepal.
 
-This repository currently contains the application foundation only. Authentication, database access, and financial workflows are intentionally not connected yet.
+This repository contains the application foundation and a member dashboard preview at `/dashboard`. The dashboard uses fictional sample records, with working All/Paid/Pending filters and responsive layouts. Its sample countdown is fixed to 18 September 2026. Authentication, database access, and financial mutations are intentionally not connected yet; the preview is not a protected production workspace.
 
 ## Local setup
 
