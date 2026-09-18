@@ -46,6 +46,7 @@ The placeholder application is available at `http://localhost:3000`. Environment
 
 ## Architecture documents
 
+- [Project status and progress log](docs/PROJECT_STATUS.md)
 - [Product requirements](docs/PRODUCT_REQUIREMENTS.md)
 - [System design](docs/SYSTEM_DESIGN.md)
 - [Database design](docs/DATABASE_DESIGN.md)

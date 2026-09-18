@@ -14,6 +14,15 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Read the relevant files under `docs/` before changing product, financial, database, API, security, or interface behavior. Do not silently replace a documented decision. Raise contradictions before implementation.
 
+## Project progress tracking
+
+- Read `docs/PROJECT_STATUS.md` at the start of project work to recover the current implementation state, agreed scope, and outstanding work.
+- Build incrementally, one user-agreed feature at a time. Do not automatically start another feature after completing the current one.
+- Whenever a feature is started, implemented, changed, completed, or blocked, update `docs/PROJECT_STATUS.md` in the same change before handing off. Also record meaningful fixes and decisions that affect future work.
+- Update the feature tracker, current position, handoff notes, and last-updated date as needed; append a dated progress entry with the delivered scope, checks actually performed, limitations, and next steps.
+- Preserve the progress history and distinguish sample-data previews from connected functionality. Record user approval only when explicitly given; do not mark unfinished or unverified behavior complete.
+- Keep credentials and sensitive member data out of status records. This file tracks progress and does not override the four design documents.
+
 ## Architecture boundaries
 
 - Keep the application as a modular Next.js monolith.
