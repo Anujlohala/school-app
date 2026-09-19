@@ -3,7 +3,15 @@ import type { ReactNode } from "react";
 import { Brand } from "@/components/layout/brand";
 import { AppNavigation } from "@/components/layout/app-navigation";
 import { Badge } from "@/components/ui/badge";
-export function AppShell({ children }: { children: ReactNode }) {
+import { LogoutButton } from "@/features/auth/logout-button";
+
+export function AppShell({
+  children,
+  role,
+}: {
+  children: ReactNode;
+  role: "admin" | "member";
+}) {
   return (
     <div className="min-h-svh md:grid md:grid-cols-[14rem_minmax(0,1fr)]">
       <a
@@ -23,7 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p className="text-muted-foreground px-7 pt-7 text-[10px] font-bold tracking-widest uppercase">
             Your circle
           </p>
-          <AppNavigation />
+          <AppNavigation admin={role === "admin"} />
           <div className="text-muted-foreground mt-auto p-6 text-xs">
             <CircleHelp aria-hidden="true" className="mb-3 size-5" />
             <p className="text-foreground font-semibold">
@@ -45,18 +53,21 @@ export function AppShell({ children }: { children: ReactNode }) {
             <p className="text-muted-foreground hidden text-xs md:block">
               Our circle. Our shared progress.
             </p>
-            <Badge variant="outline" className="h-7 gap-2 px-3">
-              <Eye aria-hidden="true" />
-              Read-only preview
-            </Badge>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Badge variant="outline" className="h-7 gap-2 px-3">
+                <Eye aria-hidden="true" />
+                {role === "admin" ? "Administrator" : "Member · Read only"}
+              </Badge>
+              <LogoutButton />
+            </div>
           </div>
           <div className="border-t md:hidden">
-            <AppNavigation mobile />
+            <AppNavigation mobile admin={role === "admin"} />
           </div>
         </header>
         <div className="border-b bg-amber-50 px-4 py-2.5 text-center text-xs text-amber-950">
-          <strong>Sample data preview.</strong> Fictional records ·
-          Authentication and live data are not connected.
+          <strong>Development workspace.</strong> Dashboard financial figures
+          are sample data.
         </div>
         <main
           id="main-content"

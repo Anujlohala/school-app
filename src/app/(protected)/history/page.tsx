@@ -1,7 +1,9 @@
+import { requireAccount } from "@/server/queries/auth";
 import { History } from "lucide-react";
 import { SectionPlaceholder } from "@/components/states/section-placeholder";
 
-export default function HistoryPage() {
+export default async function HistoryPage() {
+  await requireAccount();
   return (
     <SectionPlaceholder
       icon={History}

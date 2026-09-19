@@ -1,3 +1,4 @@
+import { requireAccount } from "@/server/queries/auth";
 import type { Metadata } from "next";
 import {
   ArrowDownLeft,
@@ -21,7 +22,8 @@ import {
   sampleSummary as summary,
 } from "@/features/dashboard/sample-data";
 export const metadata: Metadata = { title: "Member dashboard" };
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  await requireAccount();
   const balance =
     summary.fixedSaving + summary.interest + summary.extra + summary.carried;
   const stats = [

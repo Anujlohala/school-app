@@ -1,7 +1,9 @@
+import { requireAccount } from "@/server/queries/auth";
 import { Landmark } from "lucide-react";
 import { SectionPlaceholder } from "@/components/states/section-placeholder";
 
-export default function SavingsPage() {
+export default async function SavingsPage() {
+  await requireAccount();
   return (
     <SectionPlaceholder
       icon={Landmark}

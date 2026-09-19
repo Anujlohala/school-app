@@ -5,6 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --color-auth-background: var(--auth-background);
   --font-heading: var(--font-manrope);
   --font-sans: var(--font-manrope);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -48,6 +49,7 @@
 }
 
 :root {
+  --auth-background: #f0fcf4;
   --background: #f7f5ee;
   --foreground: #17231d;
   --card: #ffffff;

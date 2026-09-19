@@ -2,6 +2,13 @@ import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 
-export default function ProtectedLayout({ children }: { children: ReactNode }) {
-  return <AppShell>{children}</AppShell>;
+import { requireAccount } from "@/server/queries/auth";
+
+export default async function ProtectedLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const account = await requireAccount();
+  return <AppShell role={account.role}>{children}</AppShell>;
 }

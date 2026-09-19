@@ -2,7 +2,9 @@
 
 A private, responsive Dhukuti and shared-savings tracker for 11 school friends in Nepal.
 
-This repository contains the application foundation and a member dashboard preview at `/dashboard`. The dashboard uses fictional sample records, with working All/Paid/Pending filters and responsive layouts. Its sample countdown is fixed to 18 September 2026. Authentication, database access, and financial mutations are intentionally not connected yet; the preview is not a protected production workspace.
+The application includes member sign-in at `/` and `/login`, administrator sign-in at `/admin/login`, and a protected dashboard at `/dashboard`. Login uses Supabase Auth and database-backed roles. The dashboard still uses fictional sample records with working All/Paid/Pending filters; financial queries and cycle/payment operations are not implemented. The Members page uses a live roster: administrators can add, rename, deactivate, and reactivate members; shared members can only read it. The sample countdown remains fixed to 18 September 2026.
+
+Authentication and both account roles are configured and verified in development. Hosted database authorization checks passed. Real browser checks verified member/admin access, member denial of admin routes, logout for both roles, and protected access after logout. See the project status for the latest handoff.
 
 ## Local setup
 
@@ -17,7 +19,11 @@ cp .env.example .env.local
 pnpm dev
 ```
 
-The placeholder application is available at `http://localhost:3000`. Environment values may remain empty for the scaffold routes.
+The application is available at `http://localhost:3000`. Populate the Supabase URL/key and server-only account email mappings in `.env.local` before running authentication. Never commit real credentials.
+
+## Development database
+
+Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in the ignored `.env.local`, then run `pnpm db:check`. This checks Auth connectivity, disabled public signup, and denied anonymous profile reads without fetching records. It does not verify member/admin sessions. See [database setup](supabase/README.md) for migration and account setup status.
 
 ## Scripts
 

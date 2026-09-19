@@ -1,7 +1,9 @@
+import { requireAccount } from "@/server/queries/auth";
 import { CalendarDays } from "lucide-react";
 import { SectionPlaceholder } from "@/components/states/section-placeholder";
 
-export default function MonthsPage() {
+export default async function MonthsPage() {
+  await requireAccount();
   return (
     <SectionPlaceholder
       icon={CalendarDays}

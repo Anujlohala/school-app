@@ -1,5 +1,6 @@
 "use client";
 import {
+  ShieldCheck,
   CalendarDays,
   CircleGauge,
   History,
@@ -16,7 +17,16 @@ const items = [
   { href: "/history", label: "History", icon: History },
   { href: "/members", label: "Members", icon: Users },
 ];
-export function AppNavigation({ mobile = false }: { mobile?: boolean }) {
+export function AppNavigation({
+  mobile = false,
+  admin = false,
+}: {
+  mobile?: boolean;
+  admin?: boolean;
+}) {
+  const visibleItems = admin
+    ? [...items, { href: "/admin", label: "Administration", icon: ShieldCheck }]
+    : items;
   const pathname = usePathname();
   return (
     <nav
@@ -27,7 +37,7 @@ export function AppNavigation({ mobile = false }: { mobile?: boolean }) {
           : "flex flex-col gap-2 p-4"
       }
     >
-      {items.map(({ href, label, icon: Icon }) => (
+      {visibleItems.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}
           href={href}
