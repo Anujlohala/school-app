@@ -35,7 +35,13 @@ describe("dashboard member payments", () => {
       paidAt: null,
       winningMonth: null,
     };
-    render(<MemberPayments payments={[base, pending]} monthNumber={2} />);
+    render(
+      <MemberPayments
+        payments={[base, pending]}
+        monthNumber={2}
+        isCurrentMonth
+      />,
+    );
 
     expect(screen.getAllByText("NPR 2,000 + NPR 100 + NPR 200")).toHaveLength(
       2,
@@ -44,5 +50,20 @@ describe("dashboard member payments", () => {
     expect(screen.queryByText("Asha Rai")).not.toBeInTheDocument();
     expect(screen.getByText("Bikash Shah")).toBeVisible();
     expect(screen.getAllByText("Eligible")).toHaveLength(2);
+  });
+
+  it("labels payments and the winner when showing a previous recorded month", () => {
+    render(
+      <MemberPayments
+        payments={[{ ...base, winningMonth: 1 }]}
+        monthNumber={1}
+        isCurrentMonth={false}
+      />,
+    );
+
+    expect(
+      screen.getByText("Month 1 · Latest recorded activity"),
+    ).toBeVisible();
+    expect(screen.getAllByText("Latest winner")).toHaveLength(2);
   });
 });

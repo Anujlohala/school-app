@@ -128,6 +128,11 @@ describe("live dashboard model", () => {
     const dashboard = buildDashboardData([cycle], [fund], "2026-02-15")!;
 
     expect(dashboard.cycle.currentMonth).toBe(2);
+    expect(dashboard.activityMonth).toEqual({
+      number: 2,
+      scheduledDate: "2026-02-28",
+      isCurrentMonth: true,
+    });
     expect(dashboard.collection).toMatchObject({
       totalDue: 250,
       received: 130,
@@ -183,24 +188,40 @@ describe("live dashboard model", () => {
     });
   });
 
-  it("keeps an overdue unfinished month as the current financial month", () => {
+  it("keeps an overdue unfinished month current while showing the latest recorded activity", () => {
     const overdueCycle: Cycle = {
       ...cycle,
       months: cycle.months.map((cycleMonth) =>
-        cycleMonth.monthNumber === 2
+        cycleMonth.monthNumber === 1
           ? {
               ...cycleMonth,
-              winnerMemberId: null,
-              winnerName: null,
-              payments: [],
+              payments: [
+                payment(0, { dhukutiDue: 0, totalDue: 10 }),
+                payment(1),
+                payment(2),
+              ],
             }
-          : cycleMonth,
+          : cycleMonth.monthNumber === 2
+            ? {
+                ...cycleMonth,
+                winnerMemberId: null,
+                winnerName: null,
+                payments: [],
+              }
+            : cycleMonth,
       ),
     };
     const dashboard = buildDashboardData([overdueCycle], [fund], "2026-03-01")!;
 
     expect(dashboard.cycle.currentMonth).toBe(2);
-    expect(dashboard.winner).toBeNull();
+    expect(dashboard.activityMonth).toEqual({
+      number: 1,
+      scheduledDate: "2026-01-31",
+      isCurrentMonth: false,
+    });
+    expect(dashboard.winner?.name).toBe("Asha");
+    expect(dashboard.payments).toHaveLength(3);
+    expect(dashboard.collection.totalDue).toBe(230);
     expect(dashboard.months[1]).toEqual({
       monthNumber: 2,
       state: "current",

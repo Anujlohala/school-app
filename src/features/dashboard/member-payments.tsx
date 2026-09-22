@@ -10,9 +10,11 @@ import { npr } from "./format";
 export function MemberPayments({
   payments,
   monthNumber,
+  isCurrentMonth,
 }: {
   payments: DashboardPayment[];
   monthNumber: number;
+  isCurrentMonth: boolean;
 }) {
   const [filter, setFilter] = useState<"All" | "Paid" | "Pending">("All");
   const visible = payments.filter(
@@ -35,7 +37,10 @@ export function MemberPayments({
             Members & payments
           </h2>
           <p className="text-muted-foreground mt-1 text-xs">
-            Month {monthNumber} · Full monthly obligations
+            Month {monthNumber} ·{" "}
+            {isCurrentMonth
+              ? "Current monthly obligations"
+              : "Latest recorded activity"}
           </p>
         </div>
         {payments.length > 0 && (
@@ -98,7 +103,8 @@ export function MemberPayments({
               <div className="text-muted-foreground hidden text-xs sm:block">
                 <WinnerStatus
                   winningMonth={row.winningMonth}
-                  currentMonth={monthNumber}
+                  displayedMonth={monthNumber}
+                  isCurrentMonth={isCurrentMonth}
                 />
               </div>
               <div className="text-right">
@@ -113,7 +119,8 @@ export function MemberPayments({
                 <span className="text-muted-foreground text-[10px] sm:hidden">
                   <WinnerStatus
                     winningMonth={row.winningMonth}
-                    currentMonth={monthNumber}
+                    displayedMonth={monthNumber}
+                    isCurrentMonth={isCurrentMonth}
                   />
                 </span>
                 <Badge
@@ -138,7 +145,7 @@ export function MemberPayments({
       )}
       <div className="text-muted-foreground bg-muted/30 border-t px-5 py-4 text-[11px] sm:px-6">
         Amounts show the recorded Dhukuti, fixed saving, and interest components
-        for this month.
+        for Month {monthNumber}.
       </div>
     </section>
   );
@@ -157,13 +164,19 @@ function count(
 
 function WinnerStatus({
   winningMonth,
-  currentMonth,
+  displayedMonth,
+  isCurrentMonth,
 }: {
   winningMonth: number | null;
-  currentMonth: number;
+  displayedMonth: number;
+  isCurrentMonth: boolean;
 }) {
-  if (winningMonth === currentMonth)
-    return <Badge variant="secondary">Current winner</Badge>;
+  if (winningMonth === displayedMonth)
+    return (
+      <Badge variant="secondary">
+        {isCurrentMonth ? "Current winner" : "Latest winner"}
+      </Badge>
+    );
   if (winningMonth) return <>Won · Month {winningMonth}</>;
   return <>Eligible</>;
 }

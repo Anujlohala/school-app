@@ -84,6 +84,7 @@ function EmptyDashboard() {
 
 function DashboardContent({ dashboard }: { dashboard: DashboardData }) {
   const { collection, saving } = dashboard;
+  const activityMonth = dashboard.activityMonth.number;
   const stats = [
     {
       label: "Total saving fund",
@@ -92,20 +93,24 @@ function DashboardContent({ dashboard }: { dashboard: DashboardData }) {
       icon: Landmark,
     },
     {
-      label: "Collected this month",
+      label: dashboard.activityMonth.isCurrentMonth
+        ? "Collected this month"
+        : `Collected in Month ${activityMonth}`,
       value: npr(collection.received),
       detail:
         collection.totalDue > 0
           ? `Of ${npr(collection.totalDue)} in monthly obligations`
-          : "Waiting for this month’s obligations",
+          : "Waiting for recorded obligations",
       icon: ArrowDownLeft,
     },
     {
-      label: "Pending this month",
+      label: dashboard.activityMonth.isCurrentMonth
+        ? "Pending this month"
+        : `Pending in Month ${activityMonth}`,
       value: npr(collection.pending),
       detail:
         collection.totalDue === 0
-          ? "Waiting for this month’s obligations"
+          ? "Waiting for recorded obligations"
           : collection.pendingMembers === 1
             ? "1 member yet to contribute"
             : `${collection.pendingMembers} members yet to contribute`,
@@ -114,13 +119,23 @@ function DashboardContent({ dashboard }: { dashboard: DashboardData }) {
     {
       label: "Members paid",
       value: `${collection.paidMembers} / ${collection.totalMembers}`,
-      detail: "Recorded against the selected month",
+      detail: `Recorded against Month ${activityMonth}`,
       icon: Users,
     },
   ];
 
   return (
     <>
+      {!dashboard.activityMonth.isCurrentMonth && (
+        <div className="border-primary/20 bg-primary/5 text-primary flex items-start gap-3 rounded-xl border px-4 py-3 text-sm">
+          <Clock3 aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+          <p>
+            Month {dashboard.cycle.currentMonth} is awaiting its Chitta draw.
+            Showing the latest recorded winner and payments from Month{" "}
+            {activityMonth}.
+          </p>
+        </div>
+      )}
       <section
         aria-label="Financial overview"
         className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
@@ -162,7 +177,8 @@ function DashboardContent({ dashboard }: { dashboard: DashboardData }) {
           <WinnerCard dashboard={dashboard} />
           <MemberPayments
             payments={dashboard.payments}
-            monthNumber={dashboard.cycle.currentMonth}
+            monthNumber={activityMonth}
+            isCurrentMonth={dashboard.activityMonth.isCurrentMonth}
           />
           <CycleProgress dashboard={dashboard} />
         </div>
@@ -193,6 +209,7 @@ function DashboardContent({ dashboard }: { dashboard: DashboardData }) {
 
 function WinnerCard({ dashboard }: { dashboard: DashboardData }) {
   const winner = dashboard.winner;
+  const activity = dashboard.activityMonth;
   return (
     <section
       aria-labelledby="winner-heading"
@@ -209,11 +226,11 @@ function WinnerCard({ dashboard }: { dashboard: DashboardData }) {
             className="flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase"
           >
             <Trophy aria-hidden="true" className="size-4" />
-            This month’s winner
+            {activity.isCurrentMonth ? "This month’s winner" : "Latest winner"}
           </h2>
           <span className="rounded-full border border-white/25 px-2.5 py-1 text-[10px]">
-            Month {dashboard.cycle.currentMonth} of{" "}
-            {dashboard.cycle.totalMonths}
+            {activity.isCurrentMonth ? "Current" : "Latest recorded"} · Month{" "}
+            {activity.number} of {dashboard.cycle.totalMonths}
           </span>
         </div>
         {winner ? (
@@ -229,8 +246,10 @@ function WinnerCard({ dashboard }: { dashboard: DashboardData }) {
                 <div>
                   <p className="text-xl font-bold">{winner.name}</p>
                   <p className="mt-1 text-xs text-white/80">
-                    Cycle {dashboard.cycle.number} · Month{" "}
-                    {dashboard.cycle.currentMonth}
+                    Cycle {dashboard.cycle.number} ·{" "}
+                    {meetingDateFormatter.format(
+                      new Date(`${activity.scheduledDate}T00:00:00Z`),
+                    )}
                   </p>
                 </div>
               </div>

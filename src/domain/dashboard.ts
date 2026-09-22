@@ -19,6 +19,11 @@ export type DashboardData = {
     currentMonth: number;
     totalMonths: number;
   };
+  activityMonth: {
+    number: number;
+    scheduledDate: string;
+    isCurrentMonth: boolean;
+  };
   collection: {
     totalDue: number;
     received: number;
@@ -83,7 +88,12 @@ export function buildDashboardData(
     nextMeetingMonth ??
     [...months].reverse().find((month) => month.winnerMemberId) ??
     months.at(-1)!;
-  const payments = currentMonth.payments;
+  const activityMonth =
+    currentMonth.winnerMemberId !== null
+      ? currentMonth
+      : ([...months].reverse().find((month) => month.winnerMemberId) ??
+        currentMonth);
+  const payments = activityMonth.payments;
   const receivedPayments = payments.filter(
     (payment) => payment.paymentStatus === "paid",
   );
@@ -106,6 +116,11 @@ export function buildDashboardData(
       currentMonth: currentMonth.monthNumber,
       totalMonths: months.length,
     },
+    activityMonth: {
+      number: activityMonth.monthNumber,
+      scheduledDate: activityMonth.scheduledDate,
+      isCurrentMonth: activityMonth.id === currentMonth.id,
+    },
     collection: {
       totalDue: sum(payments, "totalDue"),
       received: sum(receivedPayments, "totalDue"),
@@ -126,11 +141,11 @@ export function buildDashboardData(
         0,
       ),
     },
-    winner: currentMonth.winnerMemberId
+    winner: activityMonth.winnerMemberId
       ? {
-          memberId: currentMonth.winnerMemberId,
-          name: currentMonth.winnerName ?? "Recorded member",
-          initials: initials(currentMonth.winnerName ?? "Recorded member"),
+          memberId: activityMonth.winnerMemberId,
+          name: activityMonth.winnerName ?? "Recorded member",
+          initials: initials(activityMonth.winnerName ?? "Recorded member"),
           payout: (cycle.memberCount - 1) * cycle.contributionAmount,
           fixedSavingDue: cycle.fixedSavingAmount,
         }
