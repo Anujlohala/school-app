@@ -6,7 +6,7 @@ Last updated: 22 September 2026 (Asia/Kathmandu)
 
 Live login: https://school-app-fawn-phi.vercel.app/login. On 22 September 2026, the user reported that GitHub is connected to Vercel, environment configuration is complete, and the live site is working. This update does not independently verify which commit is deployed or whether pending database migrations have been applied.
 
-The app is deployed on Vercel, and the user confirmed production member and administrator sign-in after adding the missing account-email environment variables. Member management uses a live database roster with administrator editing. Cycle 1 is active in the development database with an 11-member roster and adjusted historical meeting dates. Nine real monthly winners and their obligation snapshots are present. Payment settlement and corrections are implemented locally and in hosted Supabase. The saving fund is also implemented locally and hosted: received fixed saving and interest flow from settled obligations, pending saving is excluded, extra contributions have administrator-only recording and correction, and members have read-only access. The member dashboard now derives its collection, winner, payment, saving, cycle-progress, and meeting information from those live records. No database change was required for the dashboard integration. Production deployment of the payment, saving, and live dashboard code has not been verified.
+The app is deployed on Vercel, and the user confirmed production member and administrator sign-in after adding the missing account-email environment variables. Member management uses a live database roster with administrator editing. Cycle 1 is active in the development database with an 11-member roster and adjusted historical meeting dates. Nine real monthly winners and their obligation snapshots are present. Payment settlement and corrections are implemented locally and in hosted Supabase. The saving fund is also implemented locally and hosted: received fixed saving and interest flow from settled obligations, pending saving is excluded, extra contributions have administrator-only recording and correction, and members have read-only access. The member dashboard and history page now derive their cycle, winner, payment, saving, contribution, and meeting information from those live records. No database change was required for either read-only integration. Production deployment of the payment, saving, dashboard, and history code has not been verified.
 
 Build the application incrementally, one agreed feature at a time. Completing a feature does not authorize starting the next one; agree on its scope with the user first.
 
@@ -24,7 +24,7 @@ This file tracks implementation progress and handoff context. The product requir
 | Members, cycles, and schedules       | Implemented; Cycle 1 active in development | Live roster management; cycle draft setup; exactly 11 selected members; immutable activated rules and roster; generated last-Saturday schedule; meeting-date overrides; read-only member view | Production deployment verification |
 | Winner recording and payments        | Payment settlement implemented; awaiting user review | Reviewed winner generation plus administrator-only full-payment recording, eSewa/bank/cash methods, automatic received timestamps, explicit pending corrections, optimistic locking, monthly totals, member read-only detail, and dashboard aggregation | User review and production deployment |
 | Savings and extra contributions      | Implemented and code-reviewed; awaiting user review | Live `/savings` totals, received/pending separation, carried and cumulative balances, administrator contribution recording/correction, optimistic locking, member read-only access, and dashboard aggregation                                     | User review and production deployment                                   |
-| History and member records           | Partly implemented                                 | Live `/months`, `/savings`, `/members`, and `/dashboard`; `/history` remains a scaffold placeholder                                                                                                                                      | Build history                                                             |
+| History and member records           | Live history implemented; awaiting user review     | Live `/months`, `/savings`, `/members`, `/dashboard`, and `/history`; cycle selection, month summaries, winners, payment components and methods, paid/pending/extra filters, contributions, and last-updated indicators | User review and production deployment verification                        |
 | Historical reconciliation and launch | Not started                                        | Migration and launch requirements documented                                                                                                                                                                              | Enter the first 10 months, reconcile records, verify security, backups, restoration, and deployment |
 
 ## Dashboard handoff
@@ -33,7 +33,7 @@ This file tracks implementation progress and handoff context. The product requir
 - Reference: Google Stitch project **Oxford 2068 Circle Web App**, project ID `13900062405148295433`; desktop **Member Dashboard - Overview** and **Mobile Member Dashboard**.
 - The user clarified that “homepage” means the member login screen. The feature built first is the member dashboard, not a finished login homepage.
 - The dashboard began as an explicitly labelled sample-data preview. It now reads the active or latest completed cycle, monthly obligations, winner, saving summary, and extra contributions from hosted Supabase; the old sample-data source has been removed.
-- The current month is the first scheduled month on or after the current Asia/Kathmandu calendar date. If the schedule has ended, the latest recorded month, or otherwise the final scheduled month, is shown.
+- The current month is the first scheduled month on or after the current Asia/Kathmandu calendar date unless an earlier unfinished month is overdue. If the schedule has ended with no overdue unfinished month, the latest recorded month, or otherwise the final scheduled month, is shown.
 - Collection totals use the stored obligation snapshots and settlement states. The saving balance includes received fixed saving, received winner interest, carried balances, and extra contributions while excluding pending saving.
 - The winner panel distinguishes the calculated payout from Dhukuti principal received. Before a winner is recorded, it shows an explicit “Awaiting Chitta” state.
 - The meeting countdown uses the stored schedule or adjusted meeting date and the current Asia/Kathmandu date.
@@ -80,7 +80,7 @@ This file tracks implementation progress and handoff context. The product requir
 5. Distinguish sample UI, connected functionality, tested behavior, and user approval. Do not mark a preview as a completed live feature or infer user acceptance.
 6. Record meaningful fixes or decisions that affect later work. Never include API keys, passwords, real credentials, or sensitive member data.
 
-Next step: the administrator and member review the live `/dashboard`. Do not begin the next feature until this dashboard increment is reviewed and the next scope is agreed.
+Next step: the administrator and member review the live `/history`, including cycle selection, collapsed monthly payment details, and paid, pending, and extra-contribution filters. Do not begin the next feature until this history increment is reviewed and the next scope is agreed.
 
 ### 19 September 2026 — Development Supabase foundation
 
@@ -261,3 +261,24 @@ Next step: the administrator and member review the live `/dashboard`. Do not beg
 - The handoff includes live cycle and current-month aggregation, collection and payment status, winner and payout information, saving totals, cycle progress, meeting countdown, latest contribution, empty states, responsive payment filters, removal of the fictional data source, and both code-review corrections.
 - Final verification for this application code passed: formatting, lint, strict TypeScript, all 74 automated tests, the production build, browser rendering against hosted development data, and diff validation. No database or financial record was changed during the dashboard implementation or review.
 - Production deployment verification and user interface review remain pending. CLI migration history still needs reconciliation before a linked `db push`.
+
+### 22 September 2026 — Read-only cycle history
+
+- Replaced the `/history` placeholder with live read-only history for active and completed cycles. Members and administrators can select a cycle and review recorded months, winners, payout calculations, monthly received and pending totals, saving received, payment components and methods, extra contributions, and last-updated timestamps.
+- Added All activity, Paid, Pending, and Extras filters. Monthly payment details are collapsed by default and open into a keyboard-focusable horizontal table so the summary remains compact while the full stored obligation snapshots remain available on mobile and desktop.
+- Reused the existing authenticated cycle and saving queries and added a pure history model; no database migration or write path was introduced. Draft cycles are excluded, and empty cycles or filters receive explicit states.
+- Browser verification with the shared-member session loaded nine recorded months, 99 paid obligations, one extra contribution, NPR 1,97,100 received, NPR 0 pending, and NPR 18,100 cycle saving from hosted development records. Live Pending and Extras filters behaved correctly, the 390px layout had no page-level horizontal overflow, and the browser reported no application errors. No database or financial record was changed.
+- Added history aggregation and filter regressions. Formatting, lint, strict TypeScript, all 77 automated tests, and the production build passed.
+
+### 22 September 2026 — History feature code review
+
+- Reviewed the complete uncommitted history increment against the product, system, database, API, and contributor guidance. No actionable correctness, authorization, financial-aggregation, timestamp, filtering, responsive-layout, or accessibility issue was found.
+- Confirmed that the history model derives values from stored obligation snapshots and saving records, excludes draft cycles, keeps members and administrators read-only, separates pending amounts from received totals, and exposes last-updated timestamps without claiming a detailed audit log.
+- Existing verification remains applicable: formatting, lint, strict TypeScript, all 77 automated tests, the production build, live member-session filtering, browser error inspection, and mobile overflow checks passed. No database record was changed during review.
+
+### 22 September 2026 — History feature GitHub handoff
+
+- The user requested updating project status and committing and pushing the reviewed read-only History feature to GitHub. The delivery branch is `dev`.
+- The handoff includes live cycle selection, monthly winner and payout summaries, received and pending totals, saving received, collapsible payment details, payment methods and components, contribution activity, last-updated indicators, filter and empty states, and responsive containment.
+- Final verification for this application code passed: formatting, lint, strict TypeScript, all 77 automated tests, the production build, live member-session checks, browser error inspection, 390px responsive testing, and diff validation. No schema migration or database record change was required.
+- Production deployment verification and user interface review remain pending. Cycle completion and the next-cycle transition remain the proposed next software increment.
