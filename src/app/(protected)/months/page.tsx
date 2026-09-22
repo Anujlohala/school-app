@@ -8,6 +8,7 @@ import {
   MeetingDateForm,
 } from "@/features/cycles/cycle-actions";
 import { CycleSetupForm } from "@/features/cycles/cycle-setup-form";
+import { WinnerForm } from "@/features/months/winner-form";
 import { npr } from "@/features/dashboard/format";
 import { requireAccount } from "@/server/queries/auth";
 import { listCycles } from "@/server/queries/cycles";
@@ -101,7 +102,20 @@ function CycleCard({ cycle, admin }: { cycle: Cycle; admin: boolean }) {
         scheduledDate: month.scheduledDate,
         dateOverridden: false,
         status: "draft" as const,
+        updatedAt: cycle.updatedAt,
+        winnerMemberId: null,
+        winnerName: null,
+        payments: [],
       }));
+  const usedWinnerIds = new Set(
+    cycle.months.flatMap((month) =>
+      month.winnerMemberId ? [month.winnerMemberId] : [],
+    ),
+  );
+  const nextDraftMonth = cycle.months.find((month) => !month.winnerMemberId);
+  const eligibleMembers = cycle.members.filter(
+    (member) => !usedWinnerIds.has(member.memberId),
+  );
   return (
     <Card className="gap-0 border p-5 shadow-none ring-0 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -168,7 +182,10 @@ function CycleCard({ cycle, admin }: { cycle: Cycle; admin: boolean }) {
           </ol>
         </section>
 
-        <section aria-labelledby={`cycle-${cycle.id}-schedule`}>
+        <section
+          className="min-w-0"
+          aria-labelledby={`cycle-${cycle.id}-schedule`}
+        >
           <h3
             id={`cycle-${cycle.id}-schedule`}
             className="flex items-center gap-2 text-sm font-bold"
@@ -178,7 +195,7 @@ function CycleCard({ cycle, admin }: { cycle: Cycle; admin: boolean }) {
           </h3>
           <ol className="mt-3 grid gap-3 sm:grid-cols-2">
             {schedule.map((month) => (
-              <li key={month.id} className="rounded-lg border p-3">
+              <li key={month.id} className="min-w-0 rounded-lg border p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <p className="text-xs font-bold">
@@ -203,6 +220,91 @@ function CycleCard({ cycle, admin }: { cycle: Cycle; admin: boolean }) {
                     scheduledDate={month.scheduledDate}
                   />
                 )}
+                {month.winnerMemberId ? (
+                  <div className="mt-4 border-t pt-3">
+                    <p className="text-xs font-bold">Winner</p>
+                    <p className="mt-1 text-sm">{month.winnerName}</p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      Payout:{" "}
+                      {npr((cycle.memberCount - 1) * cycle.contributionAmount)}
+                    </p>
+                    <details className="mt-3">
+                      <summary className="focus-ring cursor-pointer rounded text-xs font-bold">
+                        View {month.payments.length} member obligations
+                      </summary>
+                      <div
+                        className="focus-ring mt-3 overflow-x-auto"
+                        role="region"
+                        aria-label={`Month ${month.monthNumber} member obligations`}
+                        tabIndex={0}
+                      >
+                        <table className="w-full min-w-[620px] text-left text-xs">
+                          <thead className="text-muted-foreground border-b">
+                            <tr>
+                              <th scope="col" className="py-2 pr-3">
+                                Member
+                              </th>
+                              <th scope="col" className="py-2 pr-3 text-right">
+                                Dhukuti
+                              </th>
+                              <th scope="col" className="py-2 pr-3 text-right">
+                                Saving
+                              </th>
+                              <th scope="col" className="py-2 pr-3 text-right">
+                                Interest
+                              </th>
+                              <th scope="col" className="py-2 pr-3 text-right">
+                                Total
+                              </th>
+                              <th scope="col" className="py-2">
+                                Status
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {month.payments.map((payment) => (
+                              <tr
+                                key={payment.id}
+                                className="border-b last:border-0"
+                              >
+                                <td className="py-2 pr-3 font-medium">
+                                  {payment.memberName}
+                                </td>
+                                <td className="py-2 pr-3 text-right">
+                                  {npr(payment.dhukutiDue)}
+                                </td>
+                                <td className="py-2 pr-3 text-right">
+                                  {npr(payment.fixedSavingDue)}
+                                </td>
+                                <td className="py-2 pr-3 text-right">
+                                  {npr(payment.interestDue)}
+                                </td>
+                                <td className="py-2 pr-3 text-right font-bold">
+                                  {npr(payment.totalDue)}
+                                </td>
+                                <td className="py-2 capitalize">
+                                  {payment.paymentStatus}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  </div>
+                ) : admin &&
+                  cycle.status === "active" &&
+                  nextDraftMonth?.id === month.id ? (
+                  <WinnerForm
+                    monthId={month.id}
+                    updatedAt={month.updatedAt}
+                    members={eligibleMembers}
+                  />
+                ) : cycle.status === "active" && admin ? (
+                  <p className="text-muted-foreground mt-3 border-t pt-3 text-xs">
+                    Record the earlier month first.
+                  </p>
+                ) : null}
               </li>
             ))}
           </ol>

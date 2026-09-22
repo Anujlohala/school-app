@@ -28,6 +28,19 @@ type MonthRow = {
   scheduled_date: string;
   date_overridden: boolean;
   status: Cycle["months"][number]["status"];
+  winner_member_id: string | null;
+  updated_at: string;
+};
+type PaymentRow = {
+  id: string;
+  month_id: string;
+  member_id: string;
+  dhukuti_due: number;
+  fixed_saving_due: number;
+  interest_due: number;
+  total_due: number;
+  payment_status: "pending" | "paid";
+  members: { full_name: string } | null;
 };
 
 export async function listCycles(): Promise<Cycle[]> {
@@ -46,7 +59,7 @@ export async function listCycles(): Promise<Cycle[]> {
   const cycles = (cycleRows ?? []) as CycleRow[];
   if (!cycles.length) return [];
   const cycleIds = cycles.map((cycle) => cycle.id);
-  const [rosterResult, monthResult] = await Promise.all([
+  const [rosterResult, monthResult, paymentResult] = await Promise.all([
     supabase
       .from("cycle_members")
       .select("cycle_id,member_id,display_order,members(full_name,active)")
@@ -54,19 +67,29 @@ export async function listCycles(): Promise<Cycle[]> {
       .order("display_order"),
     supabase
       .from("cycle_months")
-      .select("id,cycle_id,month_number,scheduled_date,date_overridden,status")
+      .select(
+        "id,cycle_id,month_number,scheduled_date,date_overridden,status,winner_member_id,updated_at",
+      )
       .in("cycle_id", cycleIds)
       .order("month_number"),
+    supabase
+      .from("member_monthly_payments")
+      .select(
+        "id,month_id,member_id,dhukuti_due,fixed_saving_due,interest_due,total_due,payment_status,members(full_name)",
+      )
+      .order("created_at"),
   ]);
-  if (rosterResult.error || monthResult.error) {
+  if (rosterResult.error || monthResult.error || paymentResult.error) {
     console.error("cycles.details failed", {
       rosterCode: rosterResult.error?.code,
       monthCode: monthResult.error?.code,
+      paymentCode: paymentResult.error?.code,
     });
     throw new Error("Cycle details could not be loaded. Please try again.");
   }
   const roster = (rosterResult.data ?? []) as unknown as RosterRow[];
   const months = (monthResult.data ?? []) as MonthRow[];
+  const payments = (paymentResult.data ?? []) as unknown as PaymentRow[];
   return cycles.map((cycle) => ({
     id: cycle.id,
     cycleNumber: cycle.cycle_number,
@@ -93,6 +116,39 @@ export async function listCycles(): Promise<Cycle[]> {
         scheduledDate: month.scheduled_date,
         dateOverridden: month.date_overridden,
         status: month.status,
+        updatedAt: month.updated_at,
+        winnerMemberId: month.winner_member_id,
+        winnerName:
+          roster.find(
+            (member) =>
+              member.cycle_id === cycle.id &&
+              member.member_id === month.winner_member_id,
+          )?.members?.full_name ?? null,
+        payments: payments
+          .filter((payment) => payment.month_id === month.id)
+          .sort(
+            (left, right) =>
+              (roster.find(
+                (member) =>
+                  member.cycle_id === cycle.id &&
+                  member.member_id === left.member_id,
+              )?.display_order ?? 99) -
+              (roster.find(
+                (member) =>
+                  member.cycle_id === cycle.id &&
+                  member.member_id === right.member_id,
+              )?.display_order ?? 99),
+          )
+          .map((payment) => ({
+            id: payment.id,
+            memberId: payment.member_id,
+            memberName: payment.members?.full_name ?? "Unknown member",
+            dhukutiDue: payment.dhukuti_due,
+            fixedSavingDue: payment.fixed_saving_due,
+            interestDue: payment.interest_due,
+            totalDue: payment.total_due,
+            paymentStatus: payment.payment_status,
+          })),
       })),
   }));
 }

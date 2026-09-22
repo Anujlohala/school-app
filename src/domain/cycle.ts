@@ -34,6 +34,12 @@ export const meetingDateInput = z.object({
   scheduledDate: z.iso.date("Choose a valid Gregorian meeting date."),
 });
 
+export const winnerInput = z.object({
+  monthId: z.uuid(),
+  winnerMemberId: z.uuid(),
+  expectedUpdatedAt: z.iso.datetime({ offset: true }),
+});
+
 export type CycleStatus = "draft" | "active" | "completed";
 export type CycleMember = {
   memberId: string;
@@ -47,6 +53,20 @@ export type CycleMonth = {
   scheduledDate: string;
   dateOverridden: boolean;
   status: "draft" | "open" | "completed";
+  updatedAt: string;
+  winnerMemberId: string | null;
+  winnerName: string | null;
+  payments: MonthlyPayment[];
+};
+export type MonthlyPayment = {
+  id: string;
+  memberId: string;
+  memberName: string;
+  dhukutiDue: number;
+  fixedSavingDue: number;
+  interestDue: number;
+  totalDue: number;
+  paymentStatus: "pending" | "paid";
 };
 export type Cycle = {
   id: string;
