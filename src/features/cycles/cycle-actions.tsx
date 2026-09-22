@@ -1,22 +1,87 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { activateCycle, overrideMeetingDate } from "@/server/actions/cycles";
+import {
+  activateCycle,
+  completeCycle,
+  overrideMeetingDate,
+} from "@/server/actions/cycles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export function ActivateCycleForm({
   cycleId,
   updatedAt,
+  blockedByCycleNumber,
 }: {
   cycleId: string;
   updatedAt: string;
+  blockedByCycleNumber?: number | undefined;
 }) {
   const version = `${cycleId}:${updatedAt}`;
   const [confirmedVersion, setConfirmedVersion] = useState<string | null>(null);
   const confirmed = confirmedVersion === version;
   const [state, action, pending] = useActionState(
     activateCycle.bind(null, cycleId, updatedAt),
+    { ok: false, message: "" },
+  );
+  return (
+    <form action={action} className="space-y-4" aria-busy={pending}>
+      <label className="flex min-h-11 items-start gap-3 text-sm leading-relaxed">
+        <input
+          type="checkbox"
+          name="confirmation"
+          value="confirmed"
+          required
+          disabled={pending || blockedByCycleNumber !== undefined}
+          checked={confirmed}
+          onChange={(event) =>
+            setConfirmedVersion(event.target.checked ? version : null)
+          }
+          className="focus-ring mt-1 size-5 shrink-0 accent-[var(--primary)]"
+        />
+        I reviewed the 11 members, financial rules, starting month, and meeting
+        schedule. Activation locks this cycle setup.
+      </label>
+      <Button
+        type="submit"
+        className="min-h-11"
+        disabled={!confirmed || pending || blockedByCycleNumber !== undefined}
+      >
+        {pending ? "Activating…" : "Activate cycle"}
+      </Button>
+      {blockedByCycleNumber !== undefined && (
+        <p className="text-muted-foreground text-sm">
+          Complete active Cycle {blockedByCycleNumber} before activating this
+          draft.
+        </p>
+      )}
+      {state.message && (
+        <p
+          role={state.ok ? "status" : "alert"}
+          className={
+            state.ok ? "text-primary text-sm" : "text-destructive text-sm"
+          }
+        >
+          {state.message}
+        </p>
+      )}
+    </form>
+  );
+}
+
+export function CompleteCycleForm({
+  cycleId,
+  reviewVersion,
+}: {
+  cycleId: string;
+  reviewVersion: string;
+}) {
+  const version = `${cycleId}:${reviewVersion}`;
+  const [confirmedVersion, setConfirmedVersion] = useState<string | null>(null);
+  const confirmed = confirmedVersion === version;
+  const [state, action, pending] = useActionState(
+    completeCycle.bind(null, cycleId, reviewVersion),
     { ok: false, message: "" },
   );
   return (
@@ -34,15 +99,11 @@ export function ActivateCycleForm({
           }
           className="focus-ring mt-1 size-5 shrink-0 accent-[var(--primary)]"
         />
-        I reviewed the 11 members, financial rules, starting month, and meeting
-        schedule. Activation locks this cycle setup.
+        I reviewed all 11 winners, obligation snapshots, and the pending-payment
+        warning. Complete this cycle and unlock the next activation.
       </label>
-      <Button
-        type="submit"
-        className="min-h-11"
-        disabled={!confirmed || pending}
-      >
-        {pending ? "Activating…" : "Activate cycle"}
+      <Button type="submit" disabled={!confirmed || pending}>
+        {pending ? "Completing…" : "Complete cycle"}
       </Button>
       {state.message && (
         <p

@@ -49,6 +49,7 @@ const cycle: Cycle = {
   fixedSavingAmount: 100,
   interestAmount: 200,
   startedOn: "2026-02-01",
+  completedOn: null,
   updatedAt: "2026-02-01T00:00:00Z",
   members: [],
   months: [month],

@@ -82,10 +82,88 @@ export type Cycle = {
   fixedSavingAmount: number;
   interestAmount: number;
   startedOn: string;
+  completedOn: string | null;
   updatedAt: string;
   members: CycleMember[];
   months: CycleMonth[];
 };
+
+export type CycleCompletionSummary = {
+  ready: boolean;
+  blockers: string[];
+  winnerCount: number;
+  obligationCount: number;
+  expectedObligationCount: number;
+  pendingCount: number;
+  pendingAmount: number;
+  reviewVersion: string;
+};
+
+function postgresTimestampValue(value: string) {
+  const milliseconds = Date.parse(value);
+  const fraction = value.match(/\.(\d+)(?:Z|[+-]\d{2}:\d{2})$/)?.[1] ?? "";
+  const microsecondRemainder = Number(`${fraction.slice(3, 6)}000`.slice(0, 3));
+  return milliseconds * 1000 + microsecondRemainder;
+}
+
+export function buildCycleCompletionSummary(
+  cycle: Cycle,
+): CycleCompletionSummary {
+  const winnerIds = cycle.months.flatMap((month) =>
+    month.winnerMemberId ? [month.winnerMemberId] : [],
+  );
+  const obligationCount = cycle.months.reduce(
+    (total, month) => total + month.payments.length,
+    0,
+  );
+  const expectedObligationCount = cycle.memberCount * cycle.memberCount;
+  const pending = cycle.months.flatMap((month) =>
+    month.payments.filter((payment) => payment.paymentStatus === "pending"),
+  );
+  const blockers: string[] = [];
+  if (cycle.status !== "active") blockers.push("The cycle is not active.");
+  if (
+    cycle.memberCount !== 11 ||
+    cycle.members.length !== cycle.memberCount ||
+    cycle.months.length !== cycle.memberCount
+  )
+    blockers.push("The cycle must contain all 11 monthly records.");
+  if (
+    winnerIds.length !== cycle.memberCount ||
+    new Set(winnerIds).size !== cycle.memberCount
+  )
+    blockers.push("Every cycle member must be recorded as a winner once.");
+  if (
+    obligationCount !== expectedObligationCount ||
+    cycle.months.some((month) => month.payments.length !== cycle.memberCount)
+  )
+    blockers.push("Every month must contain all 11 obligation snapshots.");
+
+  const versions = [
+    cycle.updatedAt,
+    ...cycle.months.flatMap((month) => [
+      month.updatedAt,
+      ...month.payments.map((payment) => payment.updatedAt),
+    ]),
+  ];
+  return {
+    ready: blockers.length === 0,
+    blockers,
+    winnerCount: winnerIds.length,
+    obligationCount,
+    expectedObligationCount,
+    pendingCount: pending.length,
+    pendingAmount: pending.reduce(
+      (total, payment) => total + payment.totalDue,
+      0,
+    ),
+    reviewVersion: versions.reduce((latest, value) =>
+      postgresTimestampValue(value) > postgresTimestampValue(latest)
+        ? value
+        : latest,
+    ),
+  };
+}
 
 export function monthValueToDate(month: string) {
   if (!monthPattern.test(month)) return null;

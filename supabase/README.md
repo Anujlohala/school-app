@@ -32,6 +32,8 @@ Activation validates 11 unique active members, locks the roster and financial ru
 
 Before linked CLI pushes, verify the applied schema and repair migration history for every migration through `20260922040000` as applied. The SQL Editor does not register CLI migration versions.
 
+Migration `20260922050000_complete_cycles.sql` is the next pending development migration. It adds reviewed, administrator-only cycle completion and explicitly blocks next-cycle activation while another cycle remains active.
+
 ## Winner generation and payment settlement
 
 Migrations `20260922010000_require_reviewed_cycle_version.sql`, `20260922020000_add_monthly_obligations.sql`, and `20260922030000_add_payment_settlement.sql` are applied to development. They enforce reviewed cycle activation, atomic monthly winner and obligation generation, and administrator-only full-payment transitions with reviewed timestamps. The corresponding hosted rollback-only tests passed without changing existing records.

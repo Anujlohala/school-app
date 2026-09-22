@@ -55,6 +55,7 @@ const cycle: Cycle = {
   fixedSavingAmount: 10,
   interestAmount: 20,
   startedOn: "2026-01-01",
+  completedOn: null,
   updatedAt: "2026-01-01T00:00:00Z",
   members: memberIds.map((memberId, index) => ({
     memberId,

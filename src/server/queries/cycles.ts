@@ -14,6 +14,7 @@ type CycleRow = {
   fixed_saving_amount: number;
   interest_amount: number;
   started_on: string;
+  completed_on: string | null;
   updated_at: string;
 };
 type RosterRow = {
@@ -54,7 +55,7 @@ export async function listCycles(): Promise<Cycle[]> {
   const { data: cycleRows, error: cycleError } = await supabase
     .from("cycles")
     .select(
-      "id,cycle_number,status,member_count,contribution_amount,fixed_saving_amount,interest_amount,started_on,updated_at",
+      "id,cycle_number,status,member_count,contribution_amount,fixed_saving_amount,interest_amount,started_on,completed_on,updated_at",
     )
     .order("cycle_number", { ascending: false });
   if (cycleError) {
@@ -104,6 +105,7 @@ export async function listCycles(): Promise<Cycle[]> {
     fixedSavingAmount: cycle.fixed_saving_amount,
     interestAmount: cycle.interest_amount,
     startedOn: cycle.started_on,
+    completedOn: cycle.completed_on,
     updatedAt: cycle.updated_at,
     members: roster
       .filter((member) => member.cycle_id === cycle.id && member.members)

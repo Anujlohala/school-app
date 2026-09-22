@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
-import { CalendarDays, CircleCheck, Users } from "lucide-react";
+import { CalendarDays, CircleCheck, TriangleAlert, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
   buildSchedulePreview,
+  buildCycleCompletionSummary,
   type Cycle,
   type CycleMonth,
 } from "@/domain/cycle";
 import {
   ActivateCycleForm,
+  CompleteCycleForm,
   MeetingDateForm,
 } from "@/features/cycles/cycle-actions";
 import { CycleSetupForm } from "@/features/cycles/cycle-setup-form";
@@ -52,6 +54,7 @@ export default async function MonthsPage() {
   const admin = account.role === "admin";
   const activeMembers = members.filter((member) => member.active);
   const draft = cycles.find((cycle) => cycle.status === "draft");
+  const activeCycle = cycles.find((cycle) => cycle.status === "active");
 
   return (
     <div className="mx-auto max-w-6xl space-y-7">
@@ -80,7 +83,8 @@ export default async function MonthsPage() {
                 : "Create a cycle"}
             </h2>
             <p className="text-muted-foreground mt-1 text-sm">
-              Save and review the setup as a draft before activation.
+              Save and review the setup as a draft before activation. A draft
+              can be prepared while another cycle is active.
             </p>
           </div>
           <CycleSetupForm activeMembers={activeMembers} draft={draft} />
@@ -103,7 +107,12 @@ export default async function MonthsPage() {
       ) : (
         <div className="space-y-6">
           {cycles.map((cycle) => (
-            <CycleCard key={cycle.id} cycle={cycle} admin={admin} />
+            <CycleCard
+              key={cycle.id}
+              cycle={cycle}
+              admin={admin}
+              activeCycleNumber={activeCycle?.cycleNumber}
+            />
           ))}
         </div>
       )}
@@ -111,7 +120,16 @@ export default async function MonthsPage() {
   );
 }
 
-function CycleCard({ cycle, admin }: { cycle: Cycle; admin: boolean }) {
+function CycleCard({
+  cycle,
+  admin,
+  activeCycleNumber,
+}: {
+  cycle: Cycle;
+  admin: boolean;
+  activeCycleNumber: number | undefined;
+}) {
+  const completion = buildCycleCompletionSummary(cycle);
   const preview = buildSchedulePreview(cycle.startedOn.slice(0, 7));
   const schedule = cycle.months.length
     ? cycle.months
@@ -154,6 +172,8 @@ function CycleCard({ cycle, admin }: { cycle: Cycle; admin: boolean }) {
           <p className="text-muted-foreground mt-1 text-xs">
             Starts {displayDate(cycle.startedOn)} · {cycle.members.length}{" "}
             members
+            {cycle.completedOn &&
+              ` · Completed ${displayDate(cycle.completedOn)}`}
           </p>
         </div>
         <div className="grid grid-cols-3 gap-3 text-right text-xs">
@@ -288,7 +308,77 @@ function CycleCard({ cycle, admin }: { cycle: Cycle; admin: boolean }) {
               </p>
             </div>
           </div>
-          <ActivateCycleForm cycleId={cycle.id} updatedAt={cycle.updatedAt} />
+          <ActivateCycleForm
+            cycleId={cycle.id}
+            updatedAt={cycle.updatedAt}
+            blockedByCycleNumber={activeCycleNumber}
+          />
+        </section>
+      )}
+
+      {admin && cycle.status === "active" && (
+        <section
+          className="mt-6 border-t pt-5"
+          aria-labelledby={`complete-${cycle.id}-heading`}
+        >
+          <div className="mb-4 flex items-start gap-3">
+            {completion.ready ? (
+              <CircleCheck
+                aria-hidden="true"
+                className="text-primary mt-0.5 size-5 shrink-0"
+              />
+            ) : (
+              <TriangleAlert
+                aria-hidden="true"
+                className="text-muted-foreground mt-0.5 size-5 shrink-0"
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <h3 id={`complete-${cycle.id}-heading`} className="font-bold">
+                Complete Cycle {cycle.cycleNumber}
+              </h3>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                Completion closes all 11 months and unlocks activation of the
+                next draft. Pending payments remain available for correction.
+              </p>
+            </div>
+          </div>
+          <dl className="bg-secondary/50 mb-4 grid gap-3 rounded-lg p-4 text-sm sm:grid-cols-3">
+            <div>
+              <dt className="text-muted-foreground text-xs">Winners</dt>
+              <dd className="mt-1 font-bold">
+                {completion.winnerCount} / {cycle.memberCount}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground text-xs">Obligations</dt>
+              <dd className="mt-1 font-bold">
+                {completion.obligationCount} /{" "}
+                {completion.expectedObligationCount}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground text-xs">Still pending</dt>
+              <dd className="mt-1 font-bold">
+                {npr(completion.pendingAmount)} · {completion.pendingCount}
+              </dd>
+            </div>
+          </dl>
+          {completion.ready ? (
+            <CompleteCycleForm
+              cycleId={cycle.id}
+              reviewVersion={completion.reviewVersion}
+            />
+          ) : (
+            <div className="rounded-lg border border-dashed p-4">
+              <p className="text-sm font-bold">Completion requirements</p>
+              <ul className="text-muted-foreground mt-2 list-disc space-y-1 pl-5 text-sm">
+                {completion.blockers.map((blocker) => (
+                  <li key={blocker}>{blocker}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       )}
     </Card>

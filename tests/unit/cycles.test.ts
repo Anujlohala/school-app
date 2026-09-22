@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildSchedulePreview,
+  buildCycleCompletionSummary,
   cycleDraftInput,
   lastSaturdayOfMonth,
+  type Cycle,
 } from "@/domain/cycle";
 
 const ids = Array.from(
@@ -23,6 +25,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 import {
   activateCycle,
+  completeCycle,
   overrideMeetingDate,
   saveCycleDraft,
 } from "@/server/actions/cycles";
@@ -38,6 +41,12 @@ function cycleForm(memberIds = ids) {
 }
 
 function activationForm() {
+  const data = new FormData();
+  data.set("confirmation", "confirmed");
+  return data;
+}
+
+function completionForm() {
   const data = new FormData();
   data.set("confirmation", "confirmed");
   return data;
@@ -91,6 +100,64 @@ describe("cycle rules", () => {
     expect(
       cycleDraftInput.safeParse({ ...base, interestAmount: "20.5" }).success,
     ).toBe(false);
+  });
+
+  it("requires all winners and obligation snapshots but allows pending payments", () => {
+    const cycle: Cycle = {
+      id: ids[0]!,
+      cycleNumber: 1,
+      status: "active" as const,
+      memberCount: 11,
+      contributionAmount: 2000,
+      fixedSavingAmount: 100,
+      interestAmount: 200,
+      startedOn: "2026-09-01",
+      completedOn: null,
+      updatedAt: "2026-09-22T00:00:02.123456Z",
+      members: ids.map((memberId, index) => ({
+        memberId,
+        fullName: `Member ${index + 1}`,
+        active: true,
+        displayOrder: index + 1,
+      })),
+      months: ids.map((monthId, monthIndex) => ({
+        id: monthId,
+        monthNumber: monthIndex + 1,
+        scheduledDate: "2026-09-26",
+        dateOverridden: false,
+        status: "open" as const,
+        updatedAt: "2026-09-22T00:00:02.123500Z",
+        winnerMemberId: ids[monthIndex]!,
+        winnerName: `Member ${monthIndex + 1}`,
+        payments: ids.map((memberId, memberIndex) => ({
+          id: `${monthId}-${memberIndex}`,
+          memberId,
+          memberName: `Member ${memberIndex + 1}`,
+          dhukutiDue: 2000,
+          fixedSavingDue: 100,
+          interestDue: 0,
+          totalDue: 2100,
+          paymentStatus: "pending" as const,
+          paymentMethod: null,
+          paidAt: null,
+          createdAt: "2026-09-22T00:00:00Z",
+          updatedAt:
+            monthIndex === 10 && memberIndex === 10
+              ? "2026-09-22T00:00:02.123789Z"
+              : "2026-09-22T00:00:02.123600Z",
+        })),
+      })),
+    };
+    const summary = buildCycleCompletionSummary(cycle);
+    expect(summary.ready).toBe(true);
+    expect(summary.pendingCount).toBe(121);
+    expect(summary.pendingAmount).toBe(254100);
+    expect(summary.reviewVersion).toBe("2026-09-22T00:00:02.123789Z");
+
+    cycle.months[10]!.winnerMemberId = null;
+    expect(buildCycleCompletionSummary(cycle).blockers).toContain(
+      "Every cycle member must be recorded as a winner once.",
+    );
   });
 });
 
@@ -202,5 +269,49 @@ describe("cycle actions", () => {
     expect(result.ok).toBe(false);
     expect(result.message).toContain("Reload and review the latest draft");
     expect(mock.revalidate).not.toHaveBeenCalled();
+  });
+
+  it("completes a reviewed cycle through the database transaction", async () => {
+    const cycleId = "10000000-0000-4000-8000-000000000000";
+    const version = "2026-09-22T00:00:02Z";
+    const result = await completeCycle(
+      cycleId,
+      version,
+      { ok: false, message: "" },
+      completionForm(),
+    );
+    expect(result.ok).toBe(true);
+    expect(mock.rpc).toHaveBeenCalledWith("complete_cycle", {
+      p_cycle_id: cycleId,
+      p_expected_updated_at: version,
+    });
+    expect(mock.revalidate).toHaveBeenCalledWith("/dashboard");
+    expect(mock.revalidate).toHaveBeenCalledWith("/history");
+  });
+
+  it("requires confirmation and reports a stale completion review", async () => {
+    const cycleId = "10000000-0000-4000-8000-000000000000";
+    const version = "2026-09-22T00:00:02Z";
+    expect(
+      (
+        await completeCycle(
+          cycleId,
+          version,
+          { ok: false, message: "" },
+          new FormData(),
+        )
+      ).ok,
+    ).toBe(false);
+    mock.rpc.mockResolvedValue({
+      data: null,
+      error: { code: "40001", message: "changed" },
+    });
+    const result = await completeCycle(
+      cycleId,
+      version,
+      { ok: false, message: "" },
+      completionForm(),
+    );
+    expect(result.message).toContain("changed since you reviewed");
   });
 });

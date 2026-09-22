@@ -6,13 +6,21 @@ import {
   screen,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ActivateCycleForm } from "@/features/cycles/cycle-actions";
+import {
+  ActivateCycleForm,
+  CompleteCycleForm,
+} from "@/features/cycles/cycle-actions";
 import { CycleSetupForm } from "@/features/cycles/cycle-setup-form";
 
-const mock = vi.hoisted(() => ({ save: vi.fn(), activate: vi.fn() }));
+const mock = vi.hoisted(() => ({
+  save: vi.fn(),
+  activate: vi.fn(),
+  complete: vi.fn(),
+}));
 vi.mock("@/server/actions/cycles", () => ({
   saveCycleDraft: mock.save,
   activateCycle: mock.activate,
+  completeCycle: mock.complete,
   overrideMeetingDate: vi.fn(),
 }));
 
@@ -125,5 +133,47 @@ describe("activation confirmation", () => {
     expect(
       screen.getByRole("button", { name: "Activate cycle" }),
     ).toBeDisabled();
+  });
+
+  it("explains and disables activation while another cycle is active", () => {
+    render(
+      <ActivateCycleForm
+        cycleId={cycleId}
+        updatedAt="2026-09-22T00:00:00Z"
+        blockedByCycleNumber={1}
+      />,
+    );
+    expect(screen.getByText(/Complete active Cycle 1/)).toBeInTheDocument();
+    expect(screen.getByRole("checkbox")).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Activate cycle" }),
+    ).toBeDisabled();
+  });
+});
+
+describe("completion confirmation", () => {
+  it("ties confirmation to the reviewed financial version", async () => {
+    mock.complete.mockResolvedValue({ ok: true, message: "Completed" });
+    const first = "2026-09-22T00:00:02Z";
+    const second = "2026-09-22T00:00:03Z";
+    const { rerender } = render(
+      <CompleteCycleForm cycleId={cycleId} reviewVersion={first} />,
+    );
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(
+      screen.getByRole("button", { name: "Complete cycle" }),
+    ).toBeEnabled();
+    rerender(<CompleteCycleForm cycleId={cycleId} reviewVersion={second} />);
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    fireEvent.click(screen.getByRole("checkbox"));
+    await act(async () =>
+      fireEvent.submit(screen.getByRole("checkbox").closest("form")!),
+    );
+    expect(mock.complete).toHaveBeenCalledWith(
+      cycleId,
+      second,
+      expect.anything(),
+      expect.any(FormData),
+    );
   });
 });

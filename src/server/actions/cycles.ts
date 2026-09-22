@@ -16,6 +16,9 @@ export type CycleResult = { ok: boolean; message: string };
 function refreshCycleViews() {
   revalidatePath("/months");
   revalidatePath("/admin");
+  revalidatePath("/dashboard");
+  revalidatePath("/history");
+  revalidatePath("/savings");
 }
 
 function cycleErrorMessage(message?: string) {
@@ -109,15 +112,63 @@ export async function activateCycle(
         message:
           error.code === "40001"
             ? "This cycle changed since you reviewed it. Reload and review the latest draft before activating."
-            : error.message.includes("11 active")
-              ? "Activation requires exactly 11 currently active members."
-              : "Could not activate the cycle. Reload and try again.",
+            : error.message.includes("active cycle already exists")
+              ? "Complete the active cycle before activating this draft."
+              : error.message.includes("11 active")
+                ? "Activation requires exactly 11 currently active members."
+                : "Could not activate the cycle. Reload and try again.",
       };
   } catch {
     return { ok: false, message: "Could not activate the cycle. Try again." };
   }
   refreshCycleViews();
   return { ok: true, message: "Cycle activated and 11 meetings scheduled." };
+}
+
+export async function completeCycle(
+  id: string,
+  reviewedVersion: string,
+  _previous: CycleResult,
+  form: FormData,
+): Promise<CycleResult> {
+  void _previous;
+  await requireAccount(true);
+  if (!cycleIdentity.safeParse(id).success)
+    return { ok: false, message: "Invalid cycle. Reload the page." };
+  if (!cycleVersion.safeParse(reviewedVersion).success)
+    return {
+      ok: false,
+      message: "Reload and review the latest cycle before completing it.",
+    };
+  if (form.get("confirmation") !== "confirmed")
+    return {
+      ok: false,
+      message: "Confirm that you reviewed the final cycle summary.",
+    };
+  try {
+    const supabase = await createSupabaseServerClient(true);
+    const { error } = await supabase.rpc("complete_cycle", {
+      p_cycle_id: id,
+      p_expected_updated_at: reviewedVersion,
+    });
+    if (error)
+      return {
+        ok: false,
+        message:
+          error.code === "40001"
+            ? "This cycle changed since you reviewed it. Reload and review the latest summary before completing it."
+            : error.message.includes("not ready")
+              ? "This cycle is not ready. Record every monthly winner and obligation snapshot first."
+              : "Could not complete the cycle. Reload and try again.",
+      };
+  } catch {
+    return { ok: false, message: "Could not complete the cycle. Try again." };
+  }
+  refreshCycleViews();
+  return {
+    ok: true,
+    message: "Cycle completed. The next draft can now be activated.",
+  };
 }
 
 export async function overrideMeetingDate(
