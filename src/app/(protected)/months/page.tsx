@@ -2,14 +2,20 @@ import type { Metadata } from "next";
 import { CalendarDays, CircleCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { buildSchedulePreview, type Cycle } from "@/domain/cycle";
+import {
+  buildSchedulePreview,
+  type Cycle,
+  type CycleMonth,
+} from "@/domain/cycle";
 import {
   ActivateCycleForm,
   MeetingDateForm,
 } from "@/features/cycles/cycle-actions";
 import { CycleSetupForm } from "@/features/cycles/cycle-setup-form";
 import { WinnerForm } from "@/features/months/winner-form";
+import { PaymentControls } from "@/features/payments/payment-controls";
 import { npr } from "@/features/dashboard/format";
+import { paymentMethodLabel } from "@/domain/payment";
 import { requireAccount } from "@/server/queries/auth";
 import { listCycles } from "@/server/queries/cycles";
 import { listMembers } from "@/server/queries/members";
@@ -25,6 +31,19 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
 
 function displayDate(value: string) {
   return dateFormatter.format(new Date(`${value}T00:00:00Z`));
+}
+
+const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "Asia/Kathmandu",
+});
+
+function displayDateTime(value: string) {
+  return dateTimeFormatter.format(new Date(value));
 }
 
 export default async function MonthsPage() {
@@ -228,69 +247,7 @@ function CycleCard({ cycle, admin }: { cycle: Cycle; admin: boolean }) {
                       Payout:{" "}
                       {npr((cycle.memberCount - 1) * cycle.contributionAmount)}
                     </p>
-                    <details className="mt-3">
-                      <summary className="focus-ring cursor-pointer rounded text-xs font-bold">
-                        View {month.payments.length} member obligations
-                      </summary>
-                      <div
-                        className="focus-ring mt-3 overflow-x-auto"
-                        role="region"
-                        aria-label={`Month ${month.monthNumber} member obligations`}
-                        tabIndex={0}
-                      >
-                        <table className="w-full min-w-[620px] text-left text-xs">
-                          <thead className="text-muted-foreground border-b">
-                            <tr>
-                              <th scope="col" className="py-2 pr-3">
-                                Member
-                              </th>
-                              <th scope="col" className="py-2 pr-3 text-right">
-                                Dhukuti
-                              </th>
-                              <th scope="col" className="py-2 pr-3 text-right">
-                                Saving
-                              </th>
-                              <th scope="col" className="py-2 pr-3 text-right">
-                                Interest
-                              </th>
-                              <th scope="col" className="py-2 pr-3 text-right">
-                                Total
-                              </th>
-                              <th scope="col" className="py-2">
-                                Status
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {month.payments.map((payment) => (
-                              <tr
-                                key={payment.id}
-                                className="border-b last:border-0"
-                              >
-                                <td className="py-2 pr-3 font-medium">
-                                  {payment.memberName}
-                                </td>
-                                <td className="py-2 pr-3 text-right">
-                                  {npr(payment.dhukutiDue)}
-                                </td>
-                                <td className="py-2 pr-3 text-right">
-                                  {npr(payment.fixedSavingDue)}
-                                </td>
-                                <td className="py-2 pr-3 text-right">
-                                  {npr(payment.interestDue)}
-                                </td>
-                                <td className="py-2 pr-3 text-right font-bold">
-                                  {npr(payment.totalDue)}
-                                </td>
-                                <td className="py-2 capitalize">
-                                  {payment.paymentStatus}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </details>
+                    <MonthlyObligations month={month} admin={admin} />
                   </div>
                 ) : admin &&
                   cycle.status === "active" &&
@@ -335,5 +292,147 @@ function CycleCard({ cycle, admin }: { cycle: Cycle; admin: boolean }) {
         </section>
       )}
     </Card>
+  );
+}
+
+function MonthlyObligations({
+  month,
+  admin,
+}: {
+  month: CycleMonth;
+  admin: boolean;
+}) {
+  const paid = month.payments.filter(
+    (payment) => payment.paymentStatus === "paid",
+  );
+  const received = paid.reduce((sum, payment) => sum + payment.totalDue, 0);
+  const total = month.payments.reduce(
+    (sum, payment) => sum + payment.totalDue,
+    0,
+  );
+  return (
+    <>
+      <dl className="bg-secondary/50 mt-3 grid grid-cols-2 gap-3 rounded-lg p-3 text-xs">
+        <div>
+          <dt className="text-muted-foreground">Received</dt>
+          <dd className="mt-1 font-bold">{npr(received)}</dd>
+          <dd className="text-muted-foreground mt-0.5">
+            {paid.length} of {month.payments.length} members
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Pending</dt>
+          <dd className="mt-1 font-bold">{npr(total - received)}</dd>
+          <dd className="text-muted-foreground mt-0.5">
+            {month.payments.length - paid.length} members
+          </dd>
+        </div>
+      </dl>
+      <details className="mt-3">
+        <summary className="focus-ring cursor-pointer rounded text-xs font-bold">
+          {admin ? "Manage" : "View"} {month.payments.length} member obligations
+        </summary>
+        <div
+          className="focus-ring mt-3 overflow-x-auto"
+          role="region"
+          aria-label={`Month ${month.monthNumber} member obligations`}
+          tabIndex={0}
+        >
+          <table
+            className={`w-full text-left text-xs ${admin ? "min-w-[1080px]" : "min-w-[820px]"}`}
+          >
+            <thead className="text-muted-foreground border-b">
+              <tr>
+                <th scope="col" className="py-2 pr-3">
+                  Member
+                </th>
+                <th scope="col" className="py-2 pr-3 text-right">
+                  Dhukuti
+                </th>
+                <th scope="col" className="py-2 pr-3 text-right">
+                  Saving
+                </th>
+                <th scope="col" className="py-2 pr-3 text-right">
+                  Interest
+                </th>
+                <th scope="col" className="py-2 pr-3 text-right">
+                  Total
+                </th>
+                <th scope="col" className="py-2 pr-3">
+                  Status
+                </th>
+                <th scope="col" className="py-2 pr-3">
+                  Method / received
+                </th>
+                <th scope="col" className="py-2 pr-3">
+                  Last updated
+                </th>
+                {admin && (
+                  <th scope="col" className="py-2">
+                    Administrator action
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {month.payments.map((payment) => (
+                <tr
+                  key={payment.id}
+                  className="border-b align-top last:border-0"
+                >
+                  <td className="py-3 pr-3 font-medium">
+                    {payment.memberName}
+                  </td>
+                  <td className="py-3 pr-3 text-right">
+                    {npr(payment.dhukutiDue)}
+                  </td>
+                  <td className="py-3 pr-3 text-right">
+                    {npr(payment.fixedSavingDue)}
+                  </td>
+                  <td className="py-3 pr-3 text-right">
+                    {npr(payment.interestDue)}
+                  </td>
+                  <td className="py-3 pr-3 text-right font-bold">
+                    {npr(payment.totalDue)}
+                  </td>
+                  <td className="py-3 pr-3">
+                    <Badge
+                      variant={
+                        payment.paymentStatus === "paid"
+                          ? "default"
+                          : "secondary"
+                      }
+                    >
+                      {payment.paymentStatus === "paid" ? "Paid" : "Pending"}
+                    </Badge>
+                  </td>
+                  <td className="py-3 pr-3">
+                    <span>{paymentMethodLabel(payment.paymentMethod)}</span>
+                    {payment.paidAt && (
+                      <time
+                        dateTime={payment.paidAt}
+                        className="text-muted-foreground mt-1 block"
+                      >
+                        {displayDateTime(payment.paidAt)}
+                      </time>
+                    )}
+                  </td>
+                  <td className="text-muted-foreground py-3 pr-3">
+                    <time dateTime={payment.updatedAt}>
+                      {displayDateTime(payment.updatedAt)}
+                    </time>
+                  </td>
+                  {admin && (
+                    <td className="py-3">
+                      <PaymentControls payment={payment} />
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </>
   );
 }

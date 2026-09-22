@@ -6,7 +6,7 @@ Last updated: 22 September 2026 (Asia/Kathmandu)
 
 Live login: https://school-app-fawn-phi.vercel.app/login. On 22 September 2026, the user reported that GitHub is connected to Vercel, environment configuration is complete, and the live site is working. This update does not independently verify which commit is deployed or whether pending database migrations have been applied.
 
-The app is deployed on Vercel, and the user confirmed production member and administrator sign-in after adding the missing account-email environment variables. Member management uses a live database roster with administrator editing. Cycle 1 is active in the development database with an 11-member roster and adjusted historical meeting dates. The reviewed-version activation migration and the monthly winner/obligation migration are applied to hosted Supabase and passed rollback-only authorization and calculation checks. Administrators can record each in-person Chitta result in month order; the database then opens that month and creates 11 immutable due snapshots. Both roles can read the winner, payout, and obligation breakdown. Review fixes constrain mobile obligation tables to their cards and require fresh winner confirmation when the month identity or reviewed timestamp changes. No real winner has been entered by this implementation. Dashboard records remain fictional sample data, and payment settlement and savings workflows are still unimplemented. The winner feature and its review fixes are included in the `dev` branch handoff. Production deployment of the new winner code has not been verified.
+The app is deployed on Vercel, and the user confirmed production member and administrator sign-in after adding the missing account-email environment variables. Member management uses a live database roster with administrator editing. Cycle 1 is active in the development database with an 11-member roster and adjusted historical meeting dates. Nine real monthly winners and their obligation snapshots are present. Payment settlement and corrections are implemented locally and in hosted Supabase: administrators can mark a full obligation paid with eSewa, bank transfer, or cash, or explicitly correct it back to pending; members remain read-only. Monthly received and pending totals recalculate from stored records. Hosted rollback-only authorization and state-transition tests passed without changing real records. All observed real obligations remain pending. Dashboard figures remain fictional sample data, and savings workflows are still unimplemented. Production deployment of the payment code has not been verified.
 
 Build the application incrementally, one agreed feature at a time. Completing a feature does not authorize starting the next one; agree on its scope with the user first.
 
@@ -20,9 +20,9 @@ This file tracks implementation progress and handoff context. The product requir
 | Member dashboard                     | Implemented with sample data; awaiting user review | Responsive overview at `/dashboard`, financial summaries, winner panel, 11 fictional member records, All/Paid/Pending filters, savings breakdown, cycle progress, sample meeting countdown, and read-only preview notices | User feedback and live database-backed queries                                     |
 | Member login / homepage | Implemented; production sign-in confirmed | Real Supabase login, database role verification, HTTP-only sessions, logout, and protected member routes | Expiry-driven production session check |
 | Administrator login | Implemented; production sign-in confirmed | Administrator login, role-protected admin page, dashboard access, and logout; members denied admin access | Financial administrator workflows |
-| Database and access control | Winner foundation implemented and hosted | Profiles, members, cycles, monthly obligation snapshots; RLS, role isolation, denied direct financial writes, and atomic administrator functions | Payment-settlement and savings constraints/functions; CLI migration history reconciliation |
+| Database and access control | Payment foundation implemented and hosted | Profiles, members, cycles, monthly obligation snapshots; RLS, role isolation, denied direct financial writes, atomic winner generation, and administrator-only payment transition functions | Savings constraints/functions and CLI migration history reconciliation |
 | Members, cycles, and schedules       | Implemented; Cycle 1 active in development | Live roster management; cycle draft setup; exactly 11 selected members; immutable activated rules and roster; generated last-Saturday schedule; meeting-date overrides; read-only member view | Production deployment verification |
-| Winner recording and payments        | Winner and obligation generation implemented; user reviewed | Administrator records the in-person Chitta winner in month order with confirmation tied to the reviewed month version; atomic 11-member due snapshots; calculated payout; responsive read-only breakdown for both roles | Production deployment; payment settlement, methods, corrections, and dashboard connection |
+| Winner recording and payments        | Payment settlement implemented; awaiting user review | Reviewed winner generation plus administrator-only full-payment recording, eSewa/bank/cash methods, automatic received timestamps, explicit pending corrections, optimistic locking, monthly totals, and member read-only detail | User review, production deployment, and live dashboard connection |
 | Savings and extra contributions      | Not implemented                                    | Sample dashboard savings breakdown                                                                                                                                                                                        | Live totals and administrator contribution workflows                                                |
 | History and member records           | Scaffold placeholders only                         | Existing `/history`, `/months`, `/savings`, and `/members` routes                                                                                                                                                         | Complete read-only feature pages and connect their queries                                          |
 | Historical reconciliation and launch | Not started                                        | Migration and launch requirements documented                                                                                                                                                                              | Enter the first 10 months, reconcile records, verify security, backups, restoration, and deployment |
@@ -42,7 +42,6 @@ This file tracks implementation progress and handoff context. The product requir
 - The `(protected)` route group now enforces authentication in its layout and each page; the Proxy redirects signed-out visitors before rendering. Admin pages also require the database admin role.
 
 ## Progress log
-
 ### 18 September 2026 — Project scaffold
 
 - Reviewed all four design documents and `AGENTS.md` before development.
@@ -81,7 +80,7 @@ This file tracks implementation progress and handoff context. The product requir
 5. Distinguish sample UI, connected functionality, tested behavior, and user approval. Do not mark a preview as a completed live feature or infer user acceptance.
 6. Record meaningful fixes or decisions that affect later work. Never include API keys, passwords, real credentials, or sensitive member data.
 
-Next step: verify deployment of the reviewed winner feature. The administrator can record the real in-person Chitta results in month order; no winner was submitted during automated or browser verification. Confirm the scope of payment settlement and administrator corrections before implementing the proposed next increment. Financial dashboard data remains unconnected.
+Next step: the administrator reviews payment recording and correction controls on `/months` using an obligation whose real settlement is known. No real payment state was changed during implementation or verification. Do not begin extra contributions, savings, or live dashboard work until this increment is reviewed.
 
 ### 19 September 2026 — Development Supabase foundation
 
@@ -195,3 +194,25 @@ Next step: verify deployment of the reviewed winner feature. The administrator c
 - Scope includes atomic winner recording and obligation generation, read-only obligation breakdowns, the mobile scrolling fix, confirmation tied to the reviewed month version, migration and SQL checks, and regression tests.
 - Existing verification remains applicable: all 52 unit/component tests, formatting, lint, strict TypeScript, production build, and responsive fixture checks passed before this documentation-only handoff. No application or database behavior changed during the handoff.
 - Production deployment verification remains pending. Payment settlement and administrator corrections are the proposed next increment; implementation has not started.
+
+### 22 September 2026 — Payment settlement and corrections
+
+- Implemented administrator-only payment controls on each generated monthly obligation. A pending obligation can be marked fully paid with eSewa, bank transfer, or cash; the server never accepts an amount and PostgreSQL preserves the calculated obligation components and total.
+- Paid records display their method and server-recorded receipt time. Returning a record to pending requires explicit confirmation and clears its method and receipt timestamp. Both transitions lock the row and compare the reviewed `updated_at`; same-method paid retries and already-pending correction retries are safe no-ops.
+- Added monthly received/pending NPR totals and member counts. Members receive the same live payment state and timestamps without administrator controls. Obligation tables remain horizontally contained and keyboard-scrollable.
+- Applied `20260922030000_add_payment_settlement.sql` to hosted Supabase. Rollback-only hosted tests passed valid/invalid methods, paid and correction transitions, immutable obligation amounts, optimistic locking, retry behavior, direct-write denial, member read-only enforcement, and anonymous denial. Existing cycle and payment records were restored unchanged.
+- The local member view loaded nine recorded winners and their 99 obligation snapshots from hosted Supabase. All observed obligations remain pending; no real payment was marked paid or corrected during verification.
+- Added action, domain, and component regressions. All 60 unit/component tests, formatting, lint, strict TypeScript, and the production build passed. Awaiting administrator review and production deployment.
+
+### 22 September 2026 — Payment settlement code review
+
+- Reviewed the complete uncommitted payment increment against the product, API, system, and database designs. No actionable correctness, authorization, concurrency, financial-calculation, responsive-layout, or accessibility issue was found.
+- Confirmed that the browser never supplies an amount, all writes require administrator authorization in both the Server Action and database function, row locks and reviewed timestamps protect transitions, same-state retries are safe, and corrections preserve the original obligation amounts.
+- Rechecked the hosted rollback-only database coverage and the local member view. No real payment record was changed. Final repository checks were rerun on the reviewed tree.
+
+### 22 September 2026 — Payment settlement GitHub handoff
+
+- The user requested updating the project status, committing the reviewed payment settlement increment, and pushing it to GitHub. The delivery branch is `dev`.
+- The delivered scope includes payment methods and status transitions, correction confirmation, optimistic locking, monthly totals, member read-only presentation, the database migration, SQL checks, and regression tests.
+- Final verification for this application code passed: all 60 automated tests, formatting, lint, strict TypeScript checking, the production build, hosted rollback-only SQL checks, and local member rendering. No real payment state was changed during verification.
+- Production deployment and administrator UI review remain pending.

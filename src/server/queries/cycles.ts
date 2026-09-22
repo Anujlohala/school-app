@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Cycle } from "@/domain/cycle";
+import type { PaymentMethod } from "@/domain/payment";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireAccount } from "./auth";
 
@@ -40,6 +41,10 @@ type PaymentRow = {
   interest_due: number;
   total_due: number;
   payment_status: "pending" | "paid";
+  payment_method: PaymentMethod | null;
+  paid_at: string | null;
+  created_at: string;
+  updated_at: string;
   members: { full_name: string } | null;
 };
 
@@ -75,7 +80,7 @@ export async function listCycles(): Promise<Cycle[]> {
     supabase
       .from("member_monthly_payments")
       .select(
-        "id,month_id,member_id,dhukuti_due,fixed_saving_due,interest_due,total_due,payment_status,members(full_name)",
+        "id,month_id,member_id,dhukuti_due,fixed_saving_due,interest_due,total_due,payment_status,payment_method,paid_at,created_at,updated_at,members(full_name)",
       )
       .order("created_at"),
   ]);
@@ -148,6 +153,10 @@ export async function listCycles(): Promise<Cycle[]> {
             interestDue: payment.interest_due,
             totalDue: payment.total_due,
             paymentStatus: payment.payment_status,
+            paymentMethod: payment.payment_method,
+            paidAt: payment.paid_at,
+            createdAt: payment.created_at,
+            updatedAt: payment.updated_at,
           })),
       })),
   }));

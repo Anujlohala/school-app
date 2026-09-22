@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { PaymentMethod } from "@/domain/payment";
 
 const monthPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -67,6 +68,10 @@ export type MonthlyPayment = {
   interestDue: number;
   totalDue: number;
   paymentStatus: "pending" | "paid";
+  paymentMethod: PaymentMethod | null;
+  paidAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 export type Cycle = {
   id: string;
