@@ -66,8 +66,8 @@ export function AppShell({
           </div>
         </header>
         <div className="border-b bg-amber-50 px-4 py-2.5 text-center text-xs text-amber-950">
-          <strong>Development workspace.</strong> Dashboard financial figures
-          are sample data.
+          <strong>Development workspace.</strong> Financial pages use the
+          connected development database.
         </div>
         <main
           id="main-content"

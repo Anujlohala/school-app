@@ -82,8 +82,8 @@ export default async function MembersPage() {
       <p className="text-muted-foreground text-xs leading-relaxed">
         Inactive members remain in the roster to preserve their identity and
         history. Active members are available for cycle setup; each cycle locks
-        its own 11-person roster. Winner history and payments will follow in
-        later features. The dashboard still shows fictional sample data.
+        its own 11-person roster. Winner history, monthly payments, and the
+        dashboard use the cycle&apos;s saved records.
       </p>
     </div>
   );
