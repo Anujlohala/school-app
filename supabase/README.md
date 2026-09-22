@@ -6,7 +6,7 @@ The development project connection lives in ignored `.env.local`. Run `pnpm db:c
 
 `migrations/20260919000000_create_profiles.sql` was applied through the project SQL Editor on 19 September 2026. It creates the role table with RLS and read-own-profile access. Clients cannot create, edit, or delete roles. Public signup is disabled in the hosted Auth settings (a separate setting, not part of the SQL migration).
 
-The SQL Editor does not register this file in the CLI migration ledger. Before the first linked migration push, log in to the CLI, link the intended development project, verify this schema matches the migration, and mark version `20260919000000` applied with `supabase migration repair 20260919000000 --status applied --linked`. Do not reapply the create-table migration to this project. New empty environments should apply it normally.
+The SQL Editor does not register files in the CLI migration ledger. Before the first linked migration push, log in to the CLI, link the intended development project, verify the schema matches the migrations, and repair the applied versions listed below. Do not reapply the create-table migrations to this project. New empty environments should apply them normally.
 
 `tests/profiles_access.sql` checks database grants and the RLS policy structure in the SQL Editor. Account-specific checks in `tests/account_roles.sql` also passed after provisioning.
 
@@ -22,6 +22,18 @@ Run `tests/account_roles.sql` through the SQL Editor after provisioning to check
 
 Migration `20260919010000_create_members.sql` is applied to development through SQL Editor. It adds `members` and the `is_admin()` helper. Provisioned users may read the roster; only administrators may insert/update; clients cannot delete members. Active names are unique ignoring case, and trimmed names have a 120-character limit.
 
-`tests/members_access.sql` passed on the hosted development database and rolls back its test records. The roster starts empty; enter real names in `/members` as administrator. Cycles and financial records are separate future increments.
+`tests/members_access.sql` passed on the hosted development database and rolls back its test records. Manage the live roster in `/members` as administrator.
 
-Before linked CLI pushes, verify the applied schema and repair migration history for **both** `20260919000000` and `20260919010000` as applied. The SQL Editor does not register CLI migration versions.
+## Cycle setup and schedule
+
+Migration `20260922000000_create_cycles.sql` is applied to development through SQL Editor. It adds cycle rules, an ordered 11-member roster, and monthly schedule tables. Provisioned users may read active cycles; administrators may also read drafts. All mutations use administrator-only database functions so draft saving and activation remain atomic and client totals or roles are never trusted.
+
+Activation validates 11 unique active members, locks the roster and financial rules, and creates 11 monthly rows on each month's last Saturday. Administrators can override an active month's meeting date. Direct client writes are denied. `tests/cycles_access.sql` passed on the hosted development database and rolls back its fixtures.
+
+Before linked CLI pushes, verify the applied schema and repair migration history for `20260919000000`, `20260919010000`, and `20260922000000` as applied. The SQL Editor does not register CLI migration versions.
+
+### Pending activation fix
+
+Apply `migrations/20260922010000_require_reviewed_cycle_version.sql` before using the updated activation UI. It replaces the original activation RPC with one requiring the exact reviewed `updated_at` timestamp. The check runs after locking the cycle; missing or stale versions fail before any schedule rows are created. The old one-argument RPC is removed so it cannot bypass the check. The previously applied cycle foundation migration is unchanged.
+
+This follow-up migration has not yet been applied to the hosted database. After applying it, run `tests/cycles_access.sql` in a development database without an existing draft or active cycle. It includes stale/missing-version rejection, no partial schedule creation, and successful activation using the current version. All fixtures roll back. Do not mark this new migration applied in CLI history until it has actually run.

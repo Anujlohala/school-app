@@ -1,14 +1,237 @@
+import type { Metadata } from "next";
+import { CalendarDays, CircleCheck, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { buildSchedulePreview, type Cycle } from "@/domain/cycle";
+import {
+  ActivateCycleForm,
+  MeetingDateForm,
+} from "@/features/cycles/cycle-actions";
+import { CycleSetupForm } from "@/features/cycles/cycle-setup-form";
+import { npr } from "@/features/dashboard/format";
 import { requireAccount } from "@/server/queries/auth";
-import { CalendarDays } from "lucide-react";
-import { SectionPlaceholder } from "@/components/states/section-placeholder";
+import { listCycles } from "@/server/queries/cycles";
+import { listMembers } from "@/server/queries/members";
+
+export const metadata: Metadata = { title: "Cycles and monthly records" };
+
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "Asia/Kathmandu",
+});
+
+function displayDate(value: string) {
+  return dateFormatter.format(new Date(`${value}T00:00:00Z`));
+}
 
 export default async function MonthsPage() {
-  await requireAccount();
+  const account = await requireAccount();
+  const [members, cycles] = await Promise.all([listMembers(), listCycles()]);
+  const admin = account.role === "admin";
+  const activeMembers = members.filter((member) => member.active);
+  const draft = cycles.find((cycle) => cycle.status === "draft");
+
   return (
-    <SectionPlaceholder
-      icon={CalendarDays}
-      title="Monthly records"
-      description="This route will provide cycle and month navigation plus read-only collection details for members."
-    />
+    <div className="mx-auto max-w-6xl space-y-7">
+      <header className="space-y-2">
+        <p className="text-primary text-xs font-bold tracking-widest uppercase">
+          {admin ? "Cycle administration" : "Monthly records"}
+        </p>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Cycles and monthly schedule
+        </h1>
+        <p className="text-muted-foreground max-w-3xl text-sm leading-relaxed">
+          Each cycle snapshots its 11-person roster and contribution rules.
+          Meeting dates default to the last Saturday of each Gregorian month.
+        </p>
+      </header>
+
+      {admin && (
+        <section
+          className="bg-card space-y-5 rounded-xl border p-5 sm:p-6"
+          aria-labelledby="cycle-setup-heading"
+        >
+          <div>
+            <h2 id="cycle-setup-heading" className="text-xl font-bold">
+              {draft
+                ? `Edit Cycle ${draft.cycleNumber} draft`
+                : "Create a cycle"}
+            </h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Save and review the setup as a draft before activation.
+            </p>
+          </div>
+          <CycleSetupForm activeMembers={activeMembers} draft={draft} />
+        </section>
+      )}
+
+      {cycles.length === 0 ? (
+        <section className="bg-card rounded-xl border border-dashed p-8 text-center">
+          <CalendarDays
+            aria-hidden="true"
+            className="text-primary mx-auto mb-3 size-8"
+          />
+          <h2 className="text-lg font-semibold">No cycle has been created</h2>
+          <p className="text-muted-foreground mt-2 text-sm">
+            {admin
+              ? "Complete the setup above to save Cycle 1 as a draft."
+              : "The administrator is preparing the first cycle."}
+          </p>
+        </section>
+      ) : (
+        <div className="space-y-6">
+          {cycles.map((cycle) => (
+            <CycleCard key={cycle.id} cycle={cycle} admin={admin} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CycleCard({ cycle, admin }: { cycle: Cycle; admin: boolean }) {
+  const preview = buildSchedulePreview(cycle.startedOn.slice(0, 7));
+  const schedule = cycle.months.length
+    ? cycle.months
+    : preview.map((month) => ({
+        id: `preview-${month.monthNumber}`,
+        monthNumber: month.monthNumber,
+        scheduledDate: month.scheduledDate,
+        dateOverridden: false,
+        status: "draft" as const,
+      }));
+  return (
+    <Card className="gap-0 border p-5 shadow-none ring-0 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-bold">Cycle {cycle.cycleNumber}</h2>
+            <Badge
+              variant={cycle.status === "active" ? "default" : "secondary"}
+            >
+              {cycle.status === "draft"
+                ? "Draft"
+                : cycle.status === "active"
+                  ? "Active"
+                  : "Completed"}
+            </Badge>
+          </div>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Starts {displayDate(cycle.startedOn)} · {cycle.members.length}{" "}
+            members
+          </p>
+        </div>
+        <div className="grid grid-cols-3 gap-3 text-right text-xs">
+          <div>
+            <span className="text-muted-foreground block">Dhukuti</span>
+            <strong>{npr(cycle.contributionAmount)}</strong>
+          </div>
+          <div>
+            <span className="text-muted-foreground block">Saving</span>
+            <strong>{npr(cycle.fixedSavingAmount)}</strong>
+          </div>
+          <div>
+            <span className="text-muted-foreground block">Interest</span>
+            <strong>{npr(cycle.interestAmount)}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[0.85fr_1.4fr]">
+        <section aria-labelledby={`cycle-${cycle.id}-roster`}>
+          <h3
+            id={`cycle-${cycle.id}-roster`}
+            className="flex items-center gap-2 text-sm font-bold"
+          >
+            <Users aria-hidden="true" className="text-primary size-4" />
+            Saved roster
+          </h3>
+          <ol className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+            {cycle.members.map((member) => (
+              <li
+                key={member.memberId}
+                className="bg-secondary/50 flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm"
+              >
+                <span className="text-muted-foreground w-5 text-right text-xs tabular-nums">
+                  {member.displayOrder}
+                </span>
+                <span className="min-w-0 break-words">{member.fullName}</span>
+                {!member.active && (
+                  <Badge variant="outline" className="ml-auto">
+                    Inactive
+                  </Badge>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section aria-labelledby={`cycle-${cycle.id}-schedule`}>
+          <h3
+            id={`cycle-${cycle.id}-schedule`}
+            className="flex items-center gap-2 text-sm font-bold"
+          >
+            <CalendarDays aria-hidden="true" className="text-primary size-4" />
+            {cycle.status === "draft" ? "Schedule preview" : "Meeting schedule"}
+          </h3>
+          <ol className="mt-3 grid gap-3 sm:grid-cols-2">
+            {schedule.map((month) => (
+              <li key={month.id} className="rounded-lg border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-xs font-bold">
+                      Month {month.monthNumber}
+                    </p>
+                    <time
+                      dateTime={month.scheduledDate}
+                      className="text-muted-foreground mt-1 block text-xs"
+                    >
+                      {displayDate(month.scheduledDate)}
+                    </time>
+                  </div>
+                  {month.dateOverridden ? (
+                    <Badge variant="outline">Adjusted</Badge>
+                  ) : (
+                    <Badge variant="secondary">Last Saturday</Badge>
+                  )}
+                </div>
+                {admin && cycle.status === "active" && (
+                  <MeetingDateForm
+                    monthId={month.id}
+                    scheduledDate={month.scheduledDate}
+                  />
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+      </div>
+
+      {admin && cycle.status === "draft" && (
+        <section
+          className="mt-6 border-t pt-5"
+          aria-labelledby="activate-heading"
+        >
+          <div className="mb-4 flex items-start gap-3">
+            <CircleCheck
+              aria-hidden="true"
+              className="text-primary mt-0.5 size-5 shrink-0"
+            />
+            <div>
+              <h3 id="activate-heading" className="font-bold">
+                Activate this cycle
+              </h3>
+              <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+                Activation creates all 11 month records and permanently locks
+                the roster, starting month, and rule amounts.
+              </p>
+            </div>
+          </div>
+          <ActivateCycleForm cycleId={cycle.id} updatedAt={cycle.updatedAt} />
+        </section>
+      )}
+    </Card>
   );
 }

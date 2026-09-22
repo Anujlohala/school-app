@@ -340,16 +340,20 @@ Permission: administrator.
 ```ts
 type ActivateCycleInput = {
   cycleId: string
+  expectedUpdatedAt: string
+  confirmation: true
 }
 ```
 
 The database operation:
 
-1. Locks the cycle.
+1. Locks the cycle and rejects activation if its `updated_at` differs from the reviewed `expectedUpdatedAt` value. Preserve the database timestamp precision when submitting it.
 2. Validates the roster and rule amounts.
 3. Saves the member-count snapshot.
 4. Generates the monthly schedule.
 5. Changes the status to `active`.
+
+The interface requires a fresh confirmation whenever the cycle or draft version changes. A stale activation leaves the cycle in draft with no generated months and asks the administrator to reload and review it again.
 
 ### 10.4 `setMonthWinner`
 

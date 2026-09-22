@@ -1,10 +1,10 @@
 # Oxford 2068 Circle — Project status
 
-Last updated: 19 September 2026 (Asia/Kathmandu)
+Last updated: 22 September 2026 (Asia/Kathmandu)
 
 ## Current position
 
-The scaffold, sample-data member dashboard, and Stage 2 authentication are implemented and verified in development. Member login is available at `/` and `/login`; administrator login is at `/admin/login`. Both accounts are provisioned with database-backed roles. Real browser checks verified member and administrator access, member denial of admin routes, logout for both roles, and protected access after logout. Supabase profile RLS and denied role mutations passed hosted database tests. Member management is now implemented with a live database roster and administrator editing. Financial queries and cycle/payment administration remain unimplemented; dashboard records are fictional sample data. This is not a production launch.
+The app is deployed on Vercel, and the user confirmed production member and administrator sign-in after adding the missing account-email environment variables. Member management uses a live database roster with administrator editing. Cycle setup and schedule management are implemented locally, and the original hosted Supabase migration and authorization tests passed. Review fixes preserve draft amounts after failed saves and require activation of the exact reviewed draft version. The follow-up activation migration `20260922010000` still needs to be applied and database-tested before using the updated activation flow. The administrator must still choose 11 of the 12 active roster entries, create Cycle 1, and review it before activation. The cycle implementation and review fixes are included in the `dev` branch handoff. Production deployment of these changes has not been verified. Dashboard records remain fictional sample data, and winner, payment, and savings workflows are unimplemented.
 
 Build the application incrementally, one agreed feature at a time. Completing a feature does not authorize starting the next one; agree on its scope with the user first.
 
@@ -16,10 +16,10 @@ This file tracks implementation progress and handoff context. The product requir
 | ------------------------------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | Project scaffold                     | Implemented; user reviewed                         | Next.js, TypeScript, Tailwind, shared UI primitives and tokens, Manrope font, route/layout foundation, environment template, and development/check tooling                                                                | Connect infrastructure as individual features are built                                             |
 | Member dashboard                     | Implemented with sample data; awaiting user review | Responsive overview at `/dashboard`, financial summaries, winner panel, 11 fictional member records, All/Paid/Pending filters, savings breakdown, cycle progress, sample meeting countdown, and read-only preview notices | User feedback and live database-backed queries                                     |
-| Member login / homepage | Implemented; development verified | Real Supabase login, database role verification, HTTP-only sessions, logout, and protected member routes | Production configuration and launch checks |
-| Administrator login | Implemented; development verified | Administrator login, role-protected admin page, dashboard access, and logout; members denied admin access | Financial administrator workflows |
-| Database and access control | Authentication foundation verified | Both profiles provisioned; profile RLS, role isolation, denied client writes, disabled public signup, and connectivity checks | Cycle/payment schema, financial constraints and functions, RLS for future tables, and CLI migration history reconciliation |
-| Members, cycles, and schedules       | Member roster implemented; cycles pending                                    | Live member list, admin add/edit/deactivate/reactivate, RLS, validation, and stale-edit protection | Real roster entry, cycle setup, activation, and meeting schedule management                         |
+| Member login / homepage | Implemented; production sign-in confirmed | Real Supabase login, database role verification, HTTP-only sessions, logout, and protected member routes | Expiry-driven production session check |
+| Administrator login | Implemented; production sign-in confirmed | Administrator login, role-protected admin page, dashboard access, and logout; members denied admin access | Financial administrator workflows |
+| Database and access control | Cycle foundation implemented | Profiles, members, cycles, locked cycle rosters and monthly schedules; RLS, role isolation, denied direct cycle writes, and atomic administrator functions | Payment and savings constraints/functions, future RLS, and CLI migration history reconciliation |
+| Members, cycles, and schedules       | Implemented locally; awaiting administrator setup and review | Live roster management; cycle draft setup; exactly 11 selected members; immutable activated rules and roster; generated last-Saturday schedule; meeting-date overrides; read-only member view | Apply and test activation-version migration; choose 11 of 12 active members, configure Cycle 1, review, and deploy |
 | Winner recording and payments        | Not implemented                                    | Sample read-only presentation on dashboard                                                                                                                                                                                | Atomic winner/obligation generation, payment recording, methods, and corrections                    |
 | Savings and extra contributions      | Not implemented                                    | Sample dashboard savings breakdown                                                                                                                                                                                        | Live totals and administrator contribution workflows                                                |
 | History and member records           | Scaffold placeholders only                         | Existing `/history`, `/months`, `/savings`, and `/members` routes                                                                                                                                                         | Complete read-only feature pages and connect their queries                                          |
@@ -79,7 +79,7 @@ This file tracks implementation progress and handoff context. The product requir
 5. Distinguish sample UI, connected functionality, tested behavior, and user approval. Do not mark a preview as a completed live feature or infer user acceptance.
 6. Record meaningful fixes or decisions that affect later work. Never include API keys, passwords, real credentials, or sensitive member data.
 
-Next step: user reviews member management and enters the real roster. Agree on cycle setup as the next increment before implementing it. Financial tables and workflows remain unimplemented.
+Next step: apply and database-test migration `20260922010000_require_reviewed_cycle_version.sql` before using the updated activation flow. Then the administrator reviews `/months`, chooses the 11 Cycle 1 participants from the 12 active roster entries, verifies the rules and generated dates, and activates the cycle. Do not start winner or payment work until the user reviews this increment. Financial dashboard data remains unconnected.
 
 ### 19 September 2026 — Development Supabase foundation
 
@@ -135,3 +135,28 @@ Next step: user reviews member management and enters the real roster. Agree on c
 - Dashboard remains fictional sample data. Updated the shared notice to distinguish it from the live roster. No cycles, payments, or savings tables were introduced.
 - This migration was applied via SQL Editor; reconcile both migration versions in CLI history before the first linked `db push`.
 - Final verification: all 34 unit tests, formatting, lint, TypeScript, and production build passed. Browser submission of whitespace-only input was rejected by the real server action without creating a row. The Members page is left ready for real roster entry under the existing administrator session.
+
+### 22 September 2026 — Cycle setup and monthly schedule
+
+- Implemented `/months` as the cycle administration and read-only schedule page. Administrators can save a draft with a starting month, whole-NPR contribution rules, and exactly 11 active members; activation requires explicit confirmation and locks the rules and ordered roster.
+- Added pure cycle validation and schedule generation. Activation creates 11 monthly rows on the last Saturday of each Gregorian month, including year boundaries. Administrators may override individual active-cycle meeting dates; shared members can only read active or completed schedules.
+- Applied `20260922000000_create_cycles.sql` through the hosted SQL Editor. The schema separates cycles, cycle rosters, and cycle months, enables RLS, denies direct client writes, and exposes fixed-search-path administrator functions for atomic draft saving, activation, and date overrides.
+- Hosted `cycles_access.sql` passed for atomic activation, expected boundary dates, override behavior, direct-write denial, locked active cycles, member read-only access, unprovisioned account isolation, and anonymous denial. All fixtures rolled back, so no cycle was created by the tests.
+- The live roster currently has 12 active entries. No Cycle 1 draft or active cycle was created because selecting the 11 participants is an administrator decision. A shared-member browser check verified the empty read-only `/months` state without administrator controls.
+- Final verification passed formatting, lint, strict TypeScript, all 41 unit tests, the production build, and the live `pnpm db:check`. The administrator setup flow has automated and database coverage but still needs a browser review with the administrator session.
+- The cycle migration was applied via SQL Editor. Reconcile migration versions `20260919000000`, `20260919010000`, and `20260922000000` in CLI history before the first linked `db push`. The code remains uncommitted and is not yet deployed.
+
+### 22 September 2026 — Cycle review fixes
+
+- User requested fixes for both review findings. Draft amount fields now preserve entered values after failed actions so retries submit the intended amounts.
+- Activation confirmation is tied to the cycle ID and exact reviewed timestamp, and changing either requires a new confirmation. The server validates the timestamp and confirmation, preserves timestamp precision, and gives a specific reload/review message for a stale draft.
+- Added follow-up migration `20260922010000_require_reviewed_cycle_version.sql`: checks the reviewed timestamp under the cycle row lock before creating months and removes the old activation RPC. The previously applied migration remains unchanged.
+- Added component regressions for failed-save retries and changed-draft confirmation, action tests for version forwarding and conflict handling, and SQL regressions for stale/missing versions, rollback behavior, and removal of the unversioned RPC.
+- Verification passed: all 46 unit/component tests, formatting, lint, strict TypeScript, and the production build. Component regressions exercise failed-save retries and confirmation reset after version changes. The Docker daemon is unavailable, so SQL regressions have not run locally. The follow-up migration is not applied to hosted Supabase; applying it and running the database tests are required before using the updated activation flow. No cycle records were created or changed.
+
+### 22 September 2026 — GitHub handoff
+
+- User requested updating project status, committing the current cycle implementation and both review fixes, and pushing the changes to GitHub. Delivery branch: `dev`.
+- Scope includes cycle draft setup, locked rosters, monthly schedules, date overrides, reviewed-version activation, preserved amounts after failed saves, migrations, regression tests, and documentation.
+- Prior checks for this exact application code passed: all 46 unit/component tests, formatting, lint, strict TypeScript, and the production build. This handoff only updates status documentation; application checks were not repeated.
+- Still pending: apply migration `20260922010000_require_reviewed_cycle_version.sql`, run the updated SQL tests, review the administrator setup flow, and verify deployment. The original cycle migration is applied; the follow-up activation migration is not. No database records were changed during this handoff.
