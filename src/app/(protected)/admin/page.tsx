@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Users } from "lucide-react";
+import { CalendarDays, ClipboardCheck, Users } from "lucide-react";
 import { requireAccount } from "@/server/queries/auth";
 
 export default async function AdminPage() {
@@ -12,7 +12,7 @@ export default async function AdminPage() {
         </p>
         <h1 className="text-3xl font-bold tracking-tight">Administration</h1>
         <p className="text-muted-foreground text-sm">
-          Manage the circle’s roster and prepare its monthly cycle schedule.
+          Manage the roster, cycle records, and historical reconciliation.
         </p>
       </header>
       <Link
@@ -40,6 +40,22 @@ export default async function AdminPage() {
           <p className="text-muted-foreground mt-1 text-sm">
             Choose the roster and rules, review the schedule, and activate a
             cycle.
+          </p>
+        </div>
+      </Link>
+      <Link
+        href="/admin/reconciliation"
+        className="focus-ring bg-card hover:bg-secondary flex min-h-24 items-center gap-4 rounded-xl border p-6 transition-colors"
+      >
+        <ClipboardCheck
+          aria-hidden="true"
+          className="text-primary size-6 shrink-0"
+        />
+        <div>
+          <h2 className="text-lg font-semibold">Reconcile Cycle 1</h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Check historical winners, obligations, payment methods, and the
+            Month 10 saving baseline.
           </p>
         </div>
       </Link>

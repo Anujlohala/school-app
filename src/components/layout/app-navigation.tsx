@@ -1,6 +1,7 @@
 "use client";
 import {
   ShieldCheck,
+  ClipboardCheck,
   CalendarDays,
   CircleGauge,
   History,
@@ -25,7 +26,15 @@ export function AppNavigation({
   admin?: boolean;
 }) {
   const visibleItems = admin
-    ? [...items, { href: "/admin", label: "Administration", icon: ShieldCheck }]
+    ? [
+        ...items,
+        {
+          href: "/admin/reconciliation",
+          label: "Reconciliation",
+          icon: ClipboardCheck,
+        },
+        { href: "/admin", label: "Administration", icon: ShieldCheck },
+      ]
     : items;
   const pathname = usePathname();
   return (

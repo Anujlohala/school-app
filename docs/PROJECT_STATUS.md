@@ -6,7 +6,7 @@ Last updated: 22 September 2026 (Asia/Kathmandu)
 
 Live login: https://school-app-fawn-phi.vercel.app/login. On 22 September 2026, the user reported that GitHub is connected to Vercel, environment configuration is complete, and the live site is working. This update does not independently verify which commit is deployed or whether pending database migrations have been applied.
 
-The app is deployed on Vercel, and the user confirmed production member and administrator sign-in after adding the missing account-email environment variables. Member management uses a live database roster with administrator editing. Cycle 1 is active in the development database with an 11-member roster and adjusted historical meeting dates. Nine real monthly winners and their obligation snapshots are present. Payment settlement and corrections are implemented locally and in hosted Supabase. The saving fund is also implemented locally and hosted: received fixed saving and interest flow from settled obligations, pending saving is excluded, extra contributions have administrator-only recording and correction, and members have read-only access. The member dashboard and history page now derive their cycle, winner, payment, saving, contribution, and meeting information from those live records. Cycle completion and next-cycle transition are implemented locally; their hosted migration remains unapplied. Production deployment of the payment, saving, dashboard, history, and cycle-completion code has not been verified.
+The app is deployed on Vercel, and the user confirmed production member and administrator sign-in after adding the missing account-email environment variables. Member management uses a live database roster with administrator editing. Cycle 1 is active in the development database with an 11-member roster and adjusted historical meeting dates. Nine real monthly winners and their obligation snapshots are present. Payment settlement and corrections are implemented locally and in hosted Supabase. The saving fund is also implemented locally and hosted: received fixed saving and interest flow from settled obligations, pending saving is excluded, extra contributions have administrator-only recording and correction, and members have read-only access. The member dashboard and history page now derive their cycle, winner, payment, saving, contribution, and meeting information from those live records. Cycle completion and next-cycle transition are implemented locally; their hosted migration remains unapplied. An administrator-only reconciliation workspace is now implemented locally to verify the first ten winners, obligation coverage, payment methods, and the Month 10 saving baseline before historical sign-off. Production deployment of the payment, saving, dashboard, history, cycle-completion, and reconciliation code has not been verified.
 
 Build the application incrementally, one agreed feature at a time. Completing a feature does not authorize starting the next one; agree on its scope with the user first.
 
@@ -26,7 +26,7 @@ This file tracks implementation progress and handoff context. The product requir
 | Savings and extra contributions      | Implemented; user reviewed                         | Live `/savings` totals, received/pending separation, carried and cumulative balances, administrator contribution recording/correction, optimistic locking, member read-only access, and dashboard aggregation                                     | Production deployment verification                                   |
 | History and member records           | Implemented; user reviewed                         | Live `/months`, `/savings`, `/members`, `/dashboard`, and `/history`; cycle selection, month summaries, winners, payment components and methods, paid/pending/extra filters, contributions, and last-updated indicators | Production deployment verification                        |
 | Cycle completion and transition | Implemented locally; database validation pending | Final readiness summary, reviewed administrator completion, preserved pending obligations, closed months, and guarded next-cycle activation | Apply the hosted migration, run rollback-only SQL checks, user review, and deployment verification |
-| Historical reconciliation and launch | Not started                                        | Migration and launch requirements documented                                                                                                                                                                              | Enter the first 10 months, reconcile records, verify security, backups, restoration, and deployment |
+| Historical reconciliation and launch | Reconciliation workspace implemented locally | Administrator-only Month 1–10 checklist, winner and eligibility checks, obligation coverage, payment-method validation, and saving-baseline classification | User review; verify source records, enter Month 10, obtain sign-off, then verify security, backups, restoration, and deployment |
 
 ## Dashboard handoff
 
@@ -81,7 +81,7 @@ This file tracks implementation progress and handoff context. The product requir
 5. Distinguish sample UI, connected functionality, tested behavior, and user approval. Do not mark a preview as a completed live feature or infer user acceptance.
 6. Record meaningful fixes or decisions that affect later work. Never include API keys, passwords, real credentials, or sensitive member data.
 
-Next step: apply and validate the prepared cycle-completion migration in hosted development after action-time confirmation, then complete user review before agreeing on another feature.
+Next step: review the local reconciliation workspace with the administrator account, then apply and validate the prepared cycle-completion migration in hosted development before changing any real cycle status.
 
 ### 19 September 2026 — Development Supabase foundation
 
@@ -305,3 +305,25 @@ Next step: apply and validate the prepared cycle-completion migration in hosted 
 - The handoff includes the final readiness summary, reviewed administrator completion, atomic database transition, preserved pending obligations, completed-month state, explicit next-cycle activation guard, completion date display, migration, rollback-only SQL checks, and regression coverage.
 - Final local verification passed formatting, lint, strict TypeScript, all 82 automated tests, the production build, code review, and diff validation.
 - Migration `20260922050000_complete_cycles.sql` has not been applied to hosted Supabase, and its rollback-only SQL check has not run there. The application code is ready for source delivery, but hosted cycle completion must remain unused until that migration and validation are completed.
+
+### 22 September 2026 — Historical reconciliation workspace
+
+- Added the administrator-only `/admin/reconciliation` workspace and entry points in the administration page and navigation. It is read only and directs corrections to the existing monthly-record and saving-fund controls.
+- The Cycle 1 review checks the 11-member roster and schedule, the first ten unique winners, 11 obligation snapshots per recorded month, required payment methods, and the single member who should remain eligible for Month 11.
+- The saving review derives the documented NPR 20,000 Month-10 baseline from the saved cycle rules. It keeps extra contributions separate and classifies the baseline into received required saving, pending required saving, and saving not yet recorded; any remainder is reported as unexplained.
+- Month cards show winner, snapshot count, paid and pending counts, required saving, received saving, pending saving, and a text status. Pending payments are allowed when supported by the original records and do not prevent structural sign-off.
+- Added pure-domain regressions for the current nine-month state, a complete first-ten-month state with a valid pending payment, missing snapshots, draft exclusion, stability after Month 11 is recorded, and the full 11-month target for later cycles. Formatting, lint, strict TypeScript, all 87 automated tests, and the production build passed. A signed-out request redirected to the administrator login, and the authenticated shared-member session was redirected to the dashboard.
+- No schema or hosted database change was required. Authenticated administrator visual review remains pending, and the cycle-completion migration remains unapplied.
+
+### 22 September 2026 — Historical reconciliation code review
+
+- Reviewed the complete uncommitted reconciliation increment against the product requirements, system design, API design, database design, and existing cycle and saving implementations.
+- No actionable correctness, authorization, financial-calculation, responsive-layout, or accessibility issue was found. The administrator check runs before loading records; draft cycles are excluded; Cycle 1 remains scoped to its first ten winners even after Month 11; pending saving stays outside received saving; extra contributions remain separate; and the readiness result fails closed for incomplete rosters, schedules, winners, snapshots, and paid records without methods.
+- Final review verification passed formatting, lint, strict TypeScript, all 87 automated tests, the production build, and diff validation. No database or financial record was changed during review. Authenticated administrator visual review and hosted validation of the separate cycle-completion migration remain pending.
+
+### 22 September 2026 — Historical reconciliation GitHub handoff
+
+- The user requested updating project status and committing and pushing the reviewed historical-reconciliation increment to GitHub. The delivery branch is `dev`.
+- The handoff includes the administrator-only reconciliation route, administration and navigation entry points, Cycle 1 Month 1–10 structural checks, winner and eligibility verification, saving-baseline classification, month-level review cards, and regression coverage.
+- Final verification for this application code passed: formatting, lint, strict TypeScript, all 87 automated tests, the production build, authorization redirects, code review, and diff validation. No schema migration or database record change was required.
+- Authenticated administrator visual review, source-record comparison, Month 10 entry, and hosted validation of the separate cycle-completion migration remain pending.
