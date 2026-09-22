@@ -14,7 +14,7 @@ The SQL Editor does not register files in the CLI migration ledger. Before the f
 
 Provision one administrator and one shared-member Auth account through trusted project management. The user enters new passwords directly in Supabase. Assign the corresponding `admin` and `member` profiles and populate the server-only email mappings. The app accepts usernames `admin` and `member`; emails and passwords are never committed.
 
-Login/logout actions, request-scoped SSR clients, Proxy session refresh, and route/role guards are implemented. Cookie-based sessions are HTTP-only and Secure in production. Logout uses local scope so it does not sign out other devices using the shared account. Financial records remain sample data.
+Login/logout actions, request-scoped SSR clients, Proxy session refresh, and route/role guards are implemented. Cookie-based sessions are HTTP-only and Secure in production. Logout uses local scope so it does not sign out other devices using the shared account. The dashboard still uses sample financial data; the roster, cycles, obligations, payments, and saving page use hosted development records.
 
 Run `tests/account_roles.sql` through the SQL Editor after provisioning to check role isolation and denied profile mutations inside a rolled-back transaction. These checks complement application tests; manually verify both real login flows and logout using the selected passwords. Both Auth accounts and profiles are provisioned in development, and the hosted account-role tests passed. Both real login flows, member denial of admin access, administrator dashboard access, logout for both roles, and protected access after logout are browser-verified in development. Expiry-driven token refresh has automated coverage but has not been browser-tested.
 
@@ -30,10 +30,14 @@ Migration `20260922000000_create_cycles.sql` is applied to development through S
 
 Activation validates 11 unique active members, locks the roster and financial rules, and creates 11 monthly rows on each month's last Saturday. Administrators can override an active month's meeting date. Direct client writes are denied. `tests/cycles_access.sql` passed on the hosted development database and rolls back its fixtures.
 
-Before linked CLI pushes, verify the applied schema and repair migration history for `20260919000000`, `20260919010000`, and `20260922000000` as applied. The SQL Editor does not register CLI migration versions.
+Before linked CLI pushes, verify the applied schema and repair migration history for every migration through `20260922040000` as applied. The SQL Editor does not register CLI migration versions.
 
-### Pending activation fix
+## Winner generation and payment settlement
 
-Apply `migrations/20260922010000_require_reviewed_cycle_version.sql` before using the updated activation UI. It replaces the original activation RPC with one requiring the exact reviewed `updated_at` timestamp. The check runs after locking the cycle; missing or stale versions fail before any schedule rows are created. The old one-argument RPC is removed so it cannot bypass the check. The previously applied cycle foundation migration is unchanged.
+Migrations `20260922010000_require_reviewed_cycle_version.sql`, `20260922020000_add_monthly_obligations.sql`, and `20260922030000_add_payment_settlement.sql` are applied to development. They enforce reviewed cycle activation, atomic monthly winner and obligation generation, and administrator-only full-payment transitions with reviewed timestamps. The corresponding hosted rollback-only tests passed without changing existing records.
 
-This follow-up migration has not yet been applied to the hosted database. After applying it, run `tests/cycles_access.sql` in a development database without an existing draft or active cycle. It includes stale/missing-version rejection, no partial schedule creation, and successful activation using the current version. All fixtures roll back. Do not mark this new migration applied in CLI history until it has actually run.
+## Saving fund and extra contributions
+
+Migration `20260922040000_create_saving_fund.sql` is applied to development. It adds administrator-only extra contribution RPCs, authenticated read access with RLS, and an invoker-security saving summary view. Received fixed saving and interest come only from paid obligation snapshots; pending saving remains separate and is excluded from the available balance.
+
+`tests/saving_fund.sql` passed on the hosted development database. It creates isolated cycle fixtures, verifies totals, corrections, optimistic locking, role isolation, and anonymous denial, then rolls the transaction back. Manage and review the live fund in `/savings`. No extra contribution was created during verification.
