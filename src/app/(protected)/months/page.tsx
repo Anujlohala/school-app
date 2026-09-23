@@ -15,6 +15,7 @@ import {
 } from "@/features/cycles/cycle-actions";
 import { CycleSetupForm } from "@/features/cycles/cycle-setup-form";
 import { WinnerForm } from "@/features/months/winner-form";
+import { WinnerCorrectionForm } from "@/features/months/winner-correction-form";
 import { PaymentControls } from "@/features/payments/payment-controls";
 import { npr } from "@/features/dashboard/format";
 import { paymentMethodLabel } from "@/domain/payment";
@@ -268,6 +269,35 @@ function CycleCard({
                       {npr((cycle.memberCount - 1) * cycle.contributionAmount)}
                     </p>
                     <MonthlyObligations month={month} admin={admin} />
+                    {admin && month.winnerName && (
+                      <WinnerCorrectionForm
+                        monthId={month.id}
+                        monthNumber={month.monthNumber}
+                        updatedAt={month.updatedAt}
+                        currentWinnerMemberId={month.winnerMemberId}
+                        currentWinnerName={month.winnerName}
+                        members={cycle.members.filter(
+                          (member) =>
+                            member.memberId !== month.winnerMemberId &&
+                            !cycle.months.some(
+                              (otherMonth) =>
+                                otherMonth.id !== month.id &&
+                                otherMonth.winnerMemberId === member.memberId,
+                            ),
+                        )}
+                        receivedPaymentCount={
+                          cycle.months
+                            .filter(
+                              (affectedMonth) =>
+                                affectedMonth.monthNumber >= month.monthNumber,
+                            )
+                            .flatMap((affectedMonth) => affectedMonth.payments)
+                            .filter(
+                              (payment) => payment.paymentStatus === "paid",
+                            ).length
+                        }
+                      />
+                    )}
                   </div>
                 ) : admin &&
                   cycle.status === "active" &&

@@ -392,7 +392,22 @@ type SetMonthWinnerResult = {
 }
 ```
 
-### 10.5 `updateMeetingDate`
+### 10.5 `correctMonthWinner`
+
+Permission: administrator.
+
+```ts
+type CorrectMonthWinnerInput = {
+  monthId: string
+  winnerMemberId: string
+  expectedUpdatedAt: string
+  confirmation: true
+}
+```
+
+The operation validates the replacement against the saved cycle roster and one-win rule. Because an earlier correction can change winner-interest obligations, it atomically rebuilds pending payment snapshots for the selected month and every later recorded month. It rejects the correction if any payment in that affected range is received; the administrator must explicitly return those payments to pending first.
+
+### 10.6 `updateMeetingDate`
 
 Permission: administrator.
 
@@ -405,7 +420,7 @@ type UpdateMeetingDateInput = {
 
 The date must be a valid Gregorian date. Changing one month must not change any future month.
 
-### 10.6 `markPaymentPaid`
+### 10.7 `markPaymentPaid`
 
 Permission: administrator.
 
@@ -449,7 +464,7 @@ type PaymentMutationResult = {
 }
 ```
 
-### 10.7 `markPaymentPending`
+### 10.8 `markPaymentPending`
 
 Permission: administrator.
 
@@ -464,7 +479,7 @@ type MarkPaymentPendingInput = {
 
 It clears `payment_method` and `paid_at`, updates `updated_at`, and recalculates summaries.
 
-### 10.8 `addExtraContribution`
+### 10.9 `addExtraContribution`
 
 Permission: administrator.
 
@@ -486,7 +501,7 @@ Validation:
 - Optional month belongs to the selected cycle.
 - Reason is trimmed and length-limited.
 
-### 10.9 `updateExtraContribution`
+### 10.10 `updateExtraContribution`
 
 Permission: administrator.
 
@@ -499,7 +514,7 @@ type UpdateExtraContributionInput = {
 }
 ```
 
-### 10.10 `completeMonth`
+### 10.11 `completeMonth`
 
 Permission: administrator.
 
@@ -517,7 +532,7 @@ Completion checks:
 
 Pending payments may remain. They stay attached to their original month and can be corrected later.
 
-### 10.11 `completeCycle`
+### 10.12 `completeCycle`
 
 Permission: administrator.
 
@@ -527,7 +542,7 @@ Completion checks:
 - Every member won exactly once.
 - Every month is completed.
 
-### 10.12 `startNextCycle`
+### 10.13 `startNextCycle`
 
 This can be implemented as `createCycle` followed by roster review and `activateCycle`. It does not need special balance-copying logic because the overall saving balance is derived from all historical cycles.
 

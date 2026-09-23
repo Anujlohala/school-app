@@ -41,6 +41,10 @@ export const winnerInput = z.object({
   expectedUpdatedAt: z.iso.datetime({ offset: true }),
 });
 
+export const winnerCorrectionInput = winnerInput.extend({
+  currentWinnerMemberId: z.uuid(),
+});
+
 export type CycleStatus = "draft" | "active" | "completed";
 export type CycleMember = {
   memberId: string;

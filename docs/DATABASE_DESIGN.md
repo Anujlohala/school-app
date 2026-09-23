@@ -404,7 +404,20 @@ Responsibilities:
 
 If any step fails, the entire transaction rolls back.
 
-### 9.3 `complete_cycle`
+### 9.3 `correct_month_winner_and_rebuild_payments`
+
+Responsibilities:
+
+1. Require administrator access and lock the cycle, its months, and the affected payment snapshots.
+2. Confirm that the replacement member belongs to the cycle and has not won another month.
+3. Reject the correction when the selected month or any later recorded month has a received payment.
+4. Replace the winner and rebuild every pending obligation snapshot from that month onward, including later winner-interest amounts.
+5. Compare the reviewed month timestamp before changing any record.
+6. Commit all changes together so summaries never observe a partially corrected history.
+
+The function updates existing payment records rather than deleting historical rows. The administrator must first return affected received payments to pending when a correction would change them.
+
+### 9.4 `complete_cycle`
 
 Responsibilities:
 
@@ -648,4 +661,3 @@ Version 1 will use a normalized PostgreSQL schema with cycle-level rule snapshot
 - [Supabase Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
 - [Supabase authentication architecture](https://supabase.com/docs/guides/auth/architecture)
 - [Supabase database backups](https://supabase.com/docs/guides/platform/backups)
-
